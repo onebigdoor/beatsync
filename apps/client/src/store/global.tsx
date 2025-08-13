@@ -18,6 +18,7 @@ import {
   PlaybackControlsPermissionsType,
   PositionType,
   SearchResponseType,
+  SetAudioSourcesType,
   SpatialConfigType,
 } from "@beatsync/shared";
 import { Mutex } from "async-mutex";
@@ -111,7 +112,7 @@ interface GlobalStateValues {
 interface GlobalState extends GlobalStateValues {
   // Methods
   getAudioDuration: ({ url }: { url: string }) => number;
-  handleSetAudioSources: ({ sources }: { sources: AudioSourceType[] }) => void;
+  handleSetAudioSources: (data: SetAudioSourcesType) => void;
 
   setIsInitingSystem: (isIniting: boolean) => void;
   reorderClient: (clientId: string) => void;
@@ -1064,7 +1065,7 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
       return audioSource.buffer.duration;
     },
 
-    async handleSetAudioSources({ sources }) {
+    async handleSetAudioSources({ sources, currentAudioSource }) {
       // Wait for audio initialization to complete if it's in progress
       if (initializationMutex.isLocked()) {
         await initializationMutex.waitForUnlock();
@@ -1093,6 +1094,11 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
       // Update state immediately to show all sources (with loading states)
       set({ audioSources: newAudioSources });
 
+      // If currentAudioSource is provided from server, update selectedAudioUrl
+      if (currentAudioSource) {
+        set({ selectedAudioUrl: currentAudioSource });
+      }
+
       // Check if the currently selected/playing track was removed
       const currentStillExists = newAudioSources.some(
         (as) => as.source.url === state.selectedAudioUrl
@@ -1117,26 +1123,40 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
         return; // Nothing to load
       }
 
-      // Prioritize loading: selected track first, then others in order
-      const selectedUrl = state.selectedAudioUrl;
-      const prioritizedSources = [...sourcesToLoad].sort((a, b) => {
-        if (a.source.url === selectedUrl) return -1;
-        if (b.source.url === selectedUrl) return 1;
-        return 0;
-      });
-
-      // Load audio buffers for new sources
-      console.log(`Loading ${prioritizedSources.length} new audio sources`);
-
-      // Load in parallel but with prioritization
-      const loadPromises = prioritizedSources.map((as) =>
-        loadAudioBuffer(as.source.url)
+      // Separate current audio source from others
+      const currentSourceToLoad = currentAudioSource
+        ? sourcesToLoad.find((as) => as.source.url === currentAudioSource)
+        : null;
+      
+      const otherSourcesToLoad = sourcesToLoad.filter(
+        (as) => as.source.url !== currentAudioSource
       );
 
-      // Don't await all - let them load in background
-      Promise.all(loadPromises).catch((error) => {
-        console.error("Error loading audio sources:", error);
-      });
+      console.log(`Loading ${sourcesToLoad.length} audio sources`);
+
+      // Load current audio source first if it needs loading
+      if (currentSourceToLoad) {
+        console.log(`Priority loading current audio source: ${currentAudioSource}`);
+        try {
+          await loadAudioBuffer(currentSourceToLoad.source.url);
+          console.log(`Current audio source loaded: ${currentAudioSource}`);
+        } catch (error) {
+          console.error(`Failed to load current audio source: ${currentAudioSource}`, error);
+        }
+      }
+
+      // Load all other sources in parallel (don't await)
+      if (otherSourcesToLoad.length > 0) {
+        console.log(`Loading ${otherSourcesToLoad.length} additional audio sources in background`);
+        const otherLoadPromises = otherSourcesToLoad.map((as) =>
+          loadAudioBuffer(as.source.url)
+        );
+
+        // Don't await - let them load in background
+        Promise.all(otherLoadPromises).catch((error) => {
+          console.error("Error loading additional audio sources:", error);
+        });
+      }
     },
 
     // Reset function to clean up state

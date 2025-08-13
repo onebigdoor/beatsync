@@ -28,6 +28,7 @@ const ClientChangeMessageSchema = z.object({
 const SetAudioSourcesSchema = z.object({
   type: z.literal("SET_AUDIO_SOURCES"),
   sources: z.array(AudioSourceSchema),
+  currentAudioSource: z.string().optional(),
 });
 export type SetAudioSourcesType = z.infer<typeof SetAudioSourcesSchema>;
 
@@ -62,7 +63,6 @@ const StreamJobUpdateSchema = z.object({
   activeJobCount: z.number().nonnegative(),
 });
 export type StreamJobUpdateType = z.infer<typeof StreamJobUpdateSchema>;
-
 
 export const ScheduledActionSchema = z.object({
   type: z.literal("SCHEDULED_ACTION"),

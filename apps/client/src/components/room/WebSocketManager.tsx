@@ -182,7 +182,7 @@ export const WebSocketManager = ({
         if (event.type === "CLIENT_CHANGE") {
           setConnectedClients(event.clients);
         } else if (event.type === "SET_AUDIO_SOURCES") {
-          handleSetAudioSources({ sources: event.sources });
+          handleSetAudioSources(event);
         } else if (event.type === "SET_PLAYBACK_CONTROLS") {
           setPlaybackControlsPermissions(event.permissions);
         }
@@ -211,28 +211,29 @@ export const WebSocketManager = ({
         }
       } else if (response.type === "SEARCH_RESPONSE") {
         console.log("Received search response:", response);
-        const { 
-          setSearchResults, 
-          setIsSearching, 
+        const {
+          setSearchResults,
+          setIsSearching,
           setIsLoadingMoreResults,
           setHasMoreResults,
           isLoadingMoreResults,
         } = useGlobalStore.getState();
-        
+
         // Determine if this is pagination or new search
         const isAppending = isLoadingMoreResults;
-        
+
         // Update search results (append if pagination, replace if new search)
         setSearchResults(response.response, isAppending);
-        
+
         // Update loading states
         setIsSearching(false);
         setIsLoadingMoreResults(false);
-        
+
         // Update hasMoreResults based on response
         if (response.response.type === "success") {
-          const { total, items, offset } = response.response.response.data.tracks;
-          const hasMore = (offset + items.length) < total;
+          const { total, items, offset } =
+            response.response.response.data.tracks;
+          const hasMore = offset + items.length < total;
           setHasMoreResults(hasMore);
         } else {
           setHasMoreResults(false);

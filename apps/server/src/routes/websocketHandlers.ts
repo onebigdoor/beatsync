@@ -50,6 +50,7 @@ export const handleOpen = (ws: ServerWebSocket<WSData>, server: Server) => {
       event: {
         type: "SET_AUDIO_SOURCES",
         sources: audioSources,
+        currentAudioSource: room.getPlaybackState().audioSource || undefined,
       },
     };
 
