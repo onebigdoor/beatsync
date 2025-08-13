@@ -535,7 +535,7 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
       return index >= 0 ? index : null; // Return null if not found
     },
 
-    schedulePlay: (data) => {
+    schedulePlay: async (data) => {
       const state = get();
       if (state.isInitingSystem) {
         console.log("Not playing audio, still loading");
@@ -543,7 +543,35 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
         return;
       }
 
+      // Simulate scheduling delay for testing: sleep for 2s
+      // if (Math.random() < 0.5) {
+      //   await new Promise((resolve) => setTimeout(resolve, 1000));
+      // }
+
       const waitTimeSeconds = getWaitTimeSeconds(state, data.targetServerTime);
+
+      // Check if the scheduled time has already passed (with 50ms tolerance)
+      if (waitTimeSeconds < 0.05) {
+        console.warn(
+          `Scheduled playback time has passed or is too close. Requesting resync...`
+        );
+
+        // Don't play - request a fresh sync instead
+        const { socket } = getSocket(state);
+        sendWSRequest({
+          ws: socket,
+          request: { type: ClientActionEnum.enum.SYNC },
+        });
+
+        // Show user feedback
+        toast.info("Experiencing some network delays...", {
+          id: "lateSchedule",
+          duration: 2000,
+        });
+
+        return; // Exit without playing
+      }
+
       console.log(
         `Playing track ${data.audioSource} at ${data.trackTimeSeconds} seconds in ${waitTimeSeconds}`
       );
