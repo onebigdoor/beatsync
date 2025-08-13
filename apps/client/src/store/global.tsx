@@ -351,6 +351,34 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
     // Create fresh audio context
     const audioContext = initializeAudioContext();
 
+    // Add state change listener to detect iOS suspensions
+    audioContext.onstatechange = () => {
+      console.log(`AudioContext state changed to: ${audioContext.state}`);
+
+      if (audioContext.state === "suspended") {
+        const state = get();
+
+        // Stop playback cleanly if playing
+        if (state.isPlaying && state.audioPlayer) {
+          try {
+            state.audioPlayer.sourceNode.stop();
+            // state.broadcastPause();
+          } catch (e) {
+            // Ignore errors if already stopped
+          }
+          // set({ isPlaying: false });
+        }
+
+        // Reuse the init system UI - user will need to click "Start System" again
+        console.log("AudioContext suspended by iOS");
+        set({
+          isInitingSystem: true,
+          // isSynced: false, // Force re-sync to show SyncProgress UI
+          hasUserStartedSystem: false, // Reset user start system state
+        });
+      }
+    };
+
     // Create master gain node for volume control
     const gainNode = audioContext.createGain();
     gainNode.gain.value = 1; // Default volume
@@ -1127,7 +1155,7 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
       const currentSourceToLoad = currentAudioSource
         ? sourcesToLoad.find((as) => as.source.url === currentAudioSource)
         : null;
-      
+
       const otherSourcesToLoad = sourcesToLoad.filter(
         (as) => as.source.url !== currentAudioSource
       );
@@ -1136,18 +1164,25 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
 
       // Load current audio source first if it needs loading
       if (currentSourceToLoad) {
-        console.log(`Priority loading current audio source: ${currentAudioSource}`);
+        console.log(
+          `Priority loading current audio source: ${currentAudioSource}`
+        );
         try {
           await loadAudioBuffer(currentSourceToLoad.source.url);
           console.log(`Current audio source loaded: ${currentAudioSource}`);
         } catch (error) {
-          console.error(`Failed to load current audio source: ${currentAudioSource}`, error);
+          console.error(
+            `Failed to load current audio source: ${currentAudioSource}`,
+            error
+          );
         }
       }
 
       // Load all other sources in parallel (don't await)
       if (otherSourcesToLoad.length > 0) {
-        console.log(`Loading ${otherSourcesToLoad.length} additional audio sources in background`);
+        console.log(
+          `Loading ${otherSourcesToLoad.length} additional audio sources in background`
+        );
         const otherLoadPromises = otherSourcesToLoad.map((as) =>
           loadAudioBuffer(as.source.url)
         );
