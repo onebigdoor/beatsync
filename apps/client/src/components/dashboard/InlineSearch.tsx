@@ -1,8 +1,8 @@
 "use client";
 
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { useCanMutate, useGlobalStore } from "@/store/global";
 import { cn } from "@/lib/utils";
+import { useCanMutate, useGlobalStore } from "@/store/global";
 import { sendWSRequest } from "@/utils/ws";
 import { ClientActionEnum } from "@beatsync/shared";
 import { ArrowDown, Search as SearchIcon, X, ZapIcon } from "lucide-react";
@@ -266,16 +266,41 @@ export function InlineSearch() {
                 : "bg-neutral-800/50 text-neutral-500 placeholder:text-neutral-600 cursor-not-allowed"
             )}
           />
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-            {/* Command K shortcut */}
-            <kbd
-              className={cn(
-                "inline-flex h-6 items-center gap-0.5 rounded border border-neutral-600/50 bg-neutral-700/50 px-2 font-mono text-xs font-medium transition-colors duration-200",
-                canMutate ? "text-neutral-400" : "text-neutral-600 opacity-50"
+          <div className="absolute right-1 top-1/2 transform -translate-y-1/2 pointer-events-none w-12 flex items-center justify-center">
+            <AnimatePresence mode="wait">
+              {showCheckmark ? (
+                <motion.div
+                  key="checkmark"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="flex items-center justify-center"
+                >
+                  <ArrowDown className="w-5 h-5 text-green-500" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="shortcut"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="flex items-center justify-center"
+                >
+                  <kbd
+                    className={cn(
+                      "inline-flex h-6 items-center gap-0.5 rounded border border-neutral-600/50 bg-neutral-700/50 px-2 font-mono text-xs font-medium transition-colors duration-200",
+                      canMutate
+                        ? "text-neutral-400"
+                        : "text-neutral-600 opacity-50"
+                    )}
+                  >
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                </motion.div>
               )}
-            >
-              <span className="text-xs">⌘</span>K
-            </kbd>
+            </AnimatePresence>
           </div>
         </div>
       </form>
