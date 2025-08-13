@@ -2,6 +2,7 @@
 
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useCanMutate, useGlobalStore } from "@/store/global";
+import { cn } from "@/lib/utils";
 import { sendWSRequest } from "@/utils/ws";
 import { ClientActionEnum } from "@beatsync/shared";
 import { ArrowDown, Search as SearchIcon, X, ZapIcon } from "lucide-react";
@@ -173,68 +174,18 @@ export function InlineSearch() {
       {/* Search Input */}
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="relative group">
-          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 size-5">
+          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5">
             <AnimatePresence mode="wait">
-              {showCheckmark ? (
+              {activeStreamJobs > 0 ? (
                 <motion.div
-                  key="checkmark"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="absolute inset-0 size-5 justify-center"
-                >
-                  <ArrowDown className="w-full h-full text-green-500" />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="search"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="absolute inset-0 size-5 justify-center"
-                >
-                  <SearchIcon
-                    className={`w-full h-full transition-colors duration-200 ${
-                      canMutate
-                        ? "text-neutral-400 group-focus-within:text-white/80"
-                        : "text-neutral-600"
-                    }`}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          <input
-            {...register("query")}
-            type="text"
-            placeholder={
-              canMutate
-                ? "What do you want to play?"
-                : "Search requires admin permissions"
-            }
-            onFocus={handleFocus}
-            onBlur={() => setIsFocused(false)}
-            disabled={!canMutate}
-            className={`w-full h-10 pl-10 pr-24 sm:pr-20 border border-neutral-600/30 rounded-lg text-base sm:text-sm font-normal transition-all duration-200 focus:outline-none truncate ${
-              canMutate
-                ? "bg-white/10 hover:bg-white/15 focus:bg-white/15 focus:ring-2 focus:ring-white/80 text-white placeholder:text-neutral-400"
-                : "bg-neutral-800/50 text-neutral-500 placeholder:text-neutral-600 cursor-not-allowed"
-            }`}
-          />
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none inline-flex items-center gap-1.5">
-            {/* Stream job indicator */}
-            <AnimatePresence>
-              {activeStreamJobs > 0 && (
-                <motion.div
+                  key="streaming"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="inline-flex items-center gap-1 mr-2"
+                  className="flex items-center gap-1.5"
                 >
-                  <div className="w-4 h-4 flex items-center justify-center">
+                  <div className="w-5 h-5 flex items-center justify-center flex-shrink-0">
                     <svg className="w-full h-full" viewBox="0 0 100 100">
                       <motion.circle
                         cx="50"
@@ -264,14 +215,64 @@ export function InlineSearch() {
                     {activeStreamJobs}
                   </span>
                 </motion.div>
+              ) : showCheckmark ? (
+                <motion.div
+                  key="checkmark"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="w-5 h-5 flex items-center justify-center"
+                >
+                  <ArrowDown className="w-full h-full text-green-500" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="search"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="w-5 h-5 flex items-center justify-center"
+                >
+                  <SearchIcon
+                    className={cn(
+                      "w-full h-full transition-colors duration-200",
+                      canMutate
+                        ? "text-neutral-400 group-focus-within:text-white/80"
+                        : "text-neutral-600"
+                    )}
+                  />
+                </motion.div>
               )}
             </AnimatePresence>
-
+          </div>
+          <input
+            {...register("query")}
+            type="text"
+            placeholder={
+              canMutate
+                ? "What do you want to play?"
+                : "Search requires admin permissions"
+            }
+            onFocus={handleFocus}
+            onBlur={() => setIsFocused(false)}
+            disabled={!canMutate}
+            className={cn(
+              "w-full h-10 pr-24 sm:pr-20 border border-neutral-600/30 rounded-lg text-base sm:text-sm font-normal transition-all duration-200 focus:outline-none truncate",
+              activeStreamJobs > 0 ? "pl-14" : "pl-10",
+              canMutate
+                ? "bg-white/10 hover:bg-white/15 focus:bg-white/15 focus:ring-2 focus:ring-white/80 text-white placeholder:text-neutral-400"
+                : "bg-neutral-800/50 text-neutral-500 placeholder:text-neutral-600 cursor-not-allowed"
+            )}
+          />
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
             {/* Command K shortcut */}
             <kbd
-              className={`inline-flex h-6 items-center gap-0.5 rounded border border-neutral-600/50 bg-neutral-700/50 px-2 font-mono text-xs font-medium transition-colors duration-200 ${
+              className={cn(
+                "inline-flex h-6 items-center gap-0.5 rounded border border-neutral-600/50 bg-neutral-700/50 px-2 font-mono text-xs font-medium transition-colors duration-200",
                 canMutate ? "text-neutral-400" : "text-neutral-600 opacity-50"
-              }`}
+              )}
             >
               <span className="text-xs">⌘</span>K
             </kbd>
@@ -310,9 +311,10 @@ export function InlineSearch() {
             )}
 
             <div
-              className={`${
+              className={cn(
+                "overflow-y-auto scrollbar-thin scrollbar-thumb-rounded-md scrollbar-thumb-neutral-600/30 scrollbar-track-transparent hover:scrollbar-thumb-neutral-600/50 bg-neutral-900",
                 isMobile ? "max-h-[70vh]" : "max-h-[60vh]"
-              } overflow-y-auto scrollbar-thin scrollbar-thumb-rounded-md scrollbar-thumb-neutral-600/30 scrollbar-track-transparent hover:scrollbar-thumb-neutral-600/50 bg-neutral-900`}
+              )}
             >
               {isSearching || searchResults ? (
                 <SearchResults
