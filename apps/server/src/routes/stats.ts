@@ -42,17 +42,33 @@ export async function handleStats(): Promise<Response> {
   const activeRooms = globalManager.getRooms().map(([roomId, room]) => {
     const roomStats = room.getStats();
     const storageInfo = blobStats.activeRooms[roomId];
+    
+    // Get detailed client information including location
+    const clients = room.getClients().map(client => ({
+      clientId: client.clientId,
+      username: client.username,
+      isAdmin: client.isAdmin,
+      rtt: client.rtt,
+      location: client.location || null,
+    }));
+    
     return {
       ...roomStats,
       fileCount: storageInfo?.fileCount || 0,
       totalSize: storageInfo?.totalSize || "0 B",
       totalSizeBytes: storageInfo?.totalSizeBytes || 0,
       files: storageInfo?.files || [],
+      clients, // Add detailed client information
     };
   });
 
-  // Sort rooms by total size (largest first)
-  activeRooms.sort((a, b) => b.totalSizeBytes - a.totalSizeBytes);
+  // Sort rooms by client count (most clients first), then by total size
+  activeRooms.sort((a, b) => {
+    if (b.clientCount !== a.clientCount) {
+      return b.clientCount - a.clientCount;
+    }
+    return b.totalSizeBytes - a.totalSizeBytes;
+  });
 
   // Calculate totals for active rooms
   const activeRoomsTotalSize = activeRooms.reduce(
