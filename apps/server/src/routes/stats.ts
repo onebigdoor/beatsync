@@ -1,4 +1,3 @@
-import type { CpuInfo } from "os";
 import * as os from "os";
 import { globalManager } from "../managers";
 import { formatBytes, getBlobStats } from "../utils/blobStats";
@@ -12,13 +11,6 @@ export async function handleStats(): Promise<Response> {
   const memoryUsage = process.memoryUsage(); // rss, heapTotal, heapUsed, external, arrayBuffers
 
   const stats = {
-    cpu: {
-      count: cpus.length,
-      cores: cpus.map((core: CpuInfo) => ({
-        model: core.model,
-        speed: core.speed,
-      })),
-    },
     memory: {
       total: `${(totalMemory / 1024 / 1024 / 1024).toFixed(2)} GB`,
       free: `${(freeMemory / 1024 / 1024 / 1024).toFixed(2)} GB`,
@@ -42,16 +34,16 @@ export async function handleStats(): Promise<Response> {
   const activeRooms = globalManager.getRooms().map(([roomId, room]) => {
     const roomStats = room.getStats();
     const storageInfo = blobStats.activeRooms[roomId];
-    
+
     // Get detailed client information including location
-    const clients = room.getClients().map(client => ({
+    const clients = room.getClients().map((client) => ({
       clientId: client.clientId,
       username: client.username,
       isAdmin: client.isAdmin,
       rtt: client.rtt,
       location: client.location || null,
     }));
-    
+
     return {
       ...roomStats,
       fileCount: storageInfo?.fileCount || 0,
