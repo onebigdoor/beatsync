@@ -5,20 +5,20 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { SOCIAL_LINKS } from "@/constants";
+import { fetchActiveRooms } from "@/lib/api";
 import { generateName } from "@/lib/randomNames";
 import { validateFullRoomId, validatePartialRoomId } from "@/lib/room";
 import { useRoomStore } from "@/store/room";
+import { useQuery } from "@tanstack/react-query";
 import { LogIn, PlusCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { toast } from "sonner";
 import { FaDiscord, FaGithub } from "react-icons/fa";
-import { SOCIAL_LINKS } from "@/constants";
-import { useQuery } from "@tanstack/react-query";
-import { fetchActiveRooms } from "@/lib/api";
+import { toast } from "sonner";
 
 interface JoinFormData {
   roomId: string;
@@ -175,11 +175,24 @@ export const Join = () => {
                     autoFocus
                     maxLength={6}
                     inputMode="numeric"
+                    autoComplete="one-time-code"
+                    data-lpignore="true"
+                    data-1p-ignore
+                    data-form-type="other"
                     value={field.value}
                     onChange={(value) => {
                       // Only set the value if it contains only digits
                       if (validatePartialRoomId(value)) {
                         field.onChange(value);
+
+                        // Auto-submit when 6 digits are entered
+                        if (value.length === 6) {
+                          // handleSubmit(onSubmit)();
+                          // Small delay to ensure UI updates before submission
+                          setTimeout(() => {
+                            handleSubmit(onSubmit)();
+                          }, 100);
+                        }
                       }
                     }}
                     className="gap-2"
