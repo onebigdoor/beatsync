@@ -52,13 +52,6 @@ export const Queue = ({ className, ...rest }: React.ComponentProps<"div">) => {
         posthog.capture("play_track", { track_id: source.url });
       }
     } else {
-      // Track selection event
-      posthog.capture("select_track", {
-        track_id: source.url,
-        track_name: source.url,
-        previous_track_id: selectedAudioId,
-      });
-
       setSelectedAudioId(source.url);
       broadcastPlay(0);
     }

@@ -98,13 +98,6 @@ export const Player = () => {
       } else {
         setSliderPosition(newPosition);
       }
-
-      // Log scrub event
-      posthog.capture("scrub_confirm", {
-        position: newPosition,
-        track_id: selectedAudioId,
-        track_duration: trackDuration,
-      });
     },
     [
       canMutate,
@@ -157,14 +150,10 @@ export const Player = () => {
     });
   }, [canMutate, skipToNextTrack, posthog, selectedAudioId]);
 
-  const handleShuffle = useCallback(() => {
+  const handleShuffle = () => {
     if (!canMutate) return;
     toggleShuffle();
-    posthog.capture("toggle_shuffle", {
-      shuffle_enabled: !isShuffled,
-      queue_size: audioSources.length,
-    });
-  }, [canMutate, toggleShuffle, posthog, isShuffled, audioSources.length]);
+  };
 
   // Handle keyboard shortcuts
   useEffect(() => {
