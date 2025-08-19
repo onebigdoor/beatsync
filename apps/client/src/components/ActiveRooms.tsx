@@ -163,7 +163,7 @@ export const ActiveRooms = () => {
                       })()}
                     </p>
                     {/* Stacked country flag avatars */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 pl-2">
                       <div className="flex -space-x-2.5">
                         {room.clients.slice(0, 5).map((client) => (
                           <Avatar
