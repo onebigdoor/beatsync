@@ -57,6 +57,11 @@ export class BackupManager {
       // Restore client data
       room.restoreClientData(roomData.clientDatas);
 
+      // Restore playback state
+      if (roomData.playbackState) {
+        room.restorePlaybackState(roomData.playbackState);
+      }
+
       // Always schedule cleanup on restoration because we don't know if any clients will reconnect.
       globalManager.scheduleRoomCleanup(roomId);
       return {

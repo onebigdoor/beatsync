@@ -39,10 +39,19 @@ export const ClientCacheBackupSchema = z.record(
   z.object({ isAdmin: z.boolean() })
 );
 
+const RoomPlaybackStateSchema = z.object({
+  type: z.enum(["playing", "paused"]),
+  audioSource: z.string(), // URL of the audio source
+  serverTimeToExecute: z.number(), // When playback started/paused (server time)
+  trackPositionSeconds: z.number(), // Position in track when started/paused (seconds)
+});
+type RoomPlaybackState = z.infer<typeof RoomPlaybackStateSchema>;
+
 const RoomBackupSchema = z.object({
   clientDatas: z.array(ClientDataSchema),
   audioSources: z.array(AudioSourceSchema),
   globalVolume: z.number().min(0).max(1).default(1.0),
+  playbackState: RoomPlaybackStateSchema.optional(),
 });
 export type RoomBackupType = z.infer<typeof RoomBackupSchema>;
 
@@ -53,14 +62,6 @@ export const ServerBackupSchema = z.object({
   }),
 });
 export type ServerBackupType = z.infer<typeof ServerBackupSchema>;
-
-const RoomPlaybackStateSchema = z.object({
-  type: z.enum(["playing", "paused"]),
-  audioSource: z.string(), // URL of the audio source
-  serverTimeToExecute: z.number(), // When playback started/paused (server time)
-  trackPositionSeconds: z.number(), // Position in track when started/paused (seconds)
-});
-type RoomPlaybackState = z.infer<typeof RoomPlaybackStateSchema>;
 
 // Default/initial playback state for rooms
 const INITIAL_PLAYBACK_STATE: RoomPlaybackState = {
@@ -161,7 +162,7 @@ export class RoomManager {
     // Actually remove the client from both maps
     this.clientData.delete(clientId);
     this.wsConnections.delete(clientId);
-    
+
     const activeClients = this.getClients();
     // Reposition remaining clients if any
     if (activeClients.length > 0) {
@@ -643,6 +644,7 @@ export class RoomManager {
       clientDatas: Array.from(this.clientData.values()),
       audioSources: this.audioSources,
       globalVolume: this.globalVolume,
+      playbackState: this.playbackState,
     };
   }
 
@@ -819,5 +821,9 @@ export class RoomManager {
     clientData.forEach((client) => {
       this.clientData.set(client.clientId, client);
     });
+  }
+
+  restorePlaybackState(playbackState: RoomPlaybackState): void {
+    this.playbackState = playbackState;
   }
 }
