@@ -11,7 +11,7 @@ import { generateName } from "@/lib/randomNames";
 import { validateFullRoomId, validatePartialRoomId } from "@/lib/room";
 import { useRoomStore } from "@/store/room";
 import { useQuery } from "@tanstack/react-query";
-import { LogIn, PlusCircle } from "lucide-react";
+import { PlusCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
@@ -267,49 +267,45 @@ export const Join = () => {
             </motion.div>
 
             <div className="flex flex-col gap-3 mt-5">
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
+              <motion.button
+                type="button"
+                className="px-5 py-2 bg-primary text-primary-foreground rounded-full font-medium text-sm tracking-wide cursor-pointer w-full hover:shadow-lg hover:shadow-zinc-50/50 transition-shadow duration-500 flex items-center justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                whileHover={{
+                  scale: 1.015,
+                }}
+                whileTap={{ scale: 0.985 }}
                 transition={{ duration: 0.3 }}
-                whileHover={!isJoining && !isCreating ? { scale: 1.01 } : {}}
-                whileTap={!isJoining && !isCreating ? { scale: 0.98 } : {}}
+                onClick={handleCreateRoom}
+                disabled={isJoining || isCreating}
               >
-                <Button
-                  type="submit"
-                  className="w-full px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-medium text-sm cursor-pointer transition-all duration-300 flex items-center justify-center"
-                  disabled={isJoining || isCreating}
-                  onClick={() => {
-                    posthog.capture("join_button_clicked");
-                  }}
-                >
-                  {isJoining ? (
-                    <motion.div
-                      transition={{
-                        repeat: Infinity,
-                        duration: 1,
-                        ease: "linear",
-                      }}
-                    >
-                      <LogIn size={16} className="mr-2" />
-                    </motion.div>
-                  ) : (
-                    <LogIn size={16} className="mr-2" />
-                  )}
-                  <span>{isJoining ? "Joining..." : "Join room"}</span>
-                </Button>
-              </motion.div>
+                {isCreating ? (
+                  <motion.div
+                    transition={{
+                      repeat: Infinity,
+                      duration: 1,
+                      ease: "linear",
+                    }}
+                  >
+                    <PlusCircle size={16} className="mr-2" />
+                  </motion.div>
+                ) : (
+                  <PlusCircle size={16} className="mr-2" />
+                )}
+                <span>{isCreating ? "Creating..." : "Create new room"}</span>
+              </motion.button>
 
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                whileHover={!isJoining && !isCreating ? { scale: 1.01 } : {}}
-                whileTap={!isJoining && !isCreating ? { scale: 0.98 } : {}}
-              >
-                <Button
-                  type="button"
+              {/* <motion.button
+                  className="px-5 py-2 rounded-full font-medium text-sm tracking-wide cursor-pointer w-full hover:shadow-md hover:shadow-zinc-600/40 transition-shadow duration-500 flex items-center justify-center bg-neutral-800 text-white"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  whileHover={{
+                    scale: 1.015,
+                  }}
+                  whileTap={{ scale: 0.985 }}
+                  transition={{ duration: 0.3 }}
                   onClick={handleCreateRoom}
-                  className="w-full px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-full font-medium text-sm cursor-pointer transition-all duration-300 flex items-center justify-center"
                   disabled={isJoining || isCreating}
                 >
                   {isCreating ? (
@@ -326,8 +322,7 @@ export const Join = () => {
                     <PlusCircle size={16} className="mr-2" />
                   )}
                   <span>{isCreating ? "Creating..." : "Create new room"}</span>
-                </Button>
-              </motion.div>
+                </motion.button> */}
             </div>
           </form>
 
