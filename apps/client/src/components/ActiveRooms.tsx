@@ -152,7 +152,7 @@ export const ActiveRooms = () => {
                         if (locationParts.length > 0) {
                           return (
                             <>
-                              <span className="mx-1">•</span>
+                              <span className="mx-1.5 inline-block size-[3px] rounded-full bg-neutral-600 align-middle"></span>
                               <span className="font-normal">
                                 {locationParts.join(", ")}
                               </span>
