@@ -51,7 +51,8 @@ const getFlagSvgURLFromCountryCode = (countryCode: string) => {
     );
   }
 
-  return `https://kapowaz.github.io/square-flags/flags/${countryCode.toLowerCase()}.svg`;
+  // From `https://kapowaz.github.io/square-flags/flags/${countryCode.toLowerCase()}.svg`;
+  return `/flags/${countryCode.toLowerCase()}.svg`;
   // return `https://cdn.ipwhois.io/flags/${countryCode.toLowerCase()}.svg`;
 };
 
