@@ -20,9 +20,7 @@ export const handleLoadDefaultTracks: HandlerFunction<
     .map((obj) => ({ url: `${process.env.S3_PUBLIC_URL}/${obj.Key}` }));
 
   // Existing room sources and simple URL set for dedupe
-  const existingUrlSet = new Set(
-    room.getState().audioSources.map((s) => s.url)
-  );
+  const existingUrlSet = new Set(room.getAudioSources().map((s) => s.url));
 
   // Filter out any defaults already present in the room
   const toAdd = urls.filter((u) => !existingUrlSet.has(u.url));
@@ -39,7 +37,7 @@ export const handleLoadDefaultTracks: HandlerFunction<
     room.addAudioSource(src);
   }
 
-  const updated = room.getState().audioSources;
+  const updated = room.getAudioSources();
 
   sendBroadcast({
     server,

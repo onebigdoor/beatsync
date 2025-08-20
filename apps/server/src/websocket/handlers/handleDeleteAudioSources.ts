@@ -10,7 +10,7 @@ export const handleDeleteAudioSources: HandlerFunction<
   const { room } = requireCanMutate(ws);
 
   // Get current URLs to validate the request
-  const currentUrls = new Set(room.getState().audioSources.map((s) => s.url));
+  const currentUrls = new Set(room.getAudioSources().map((s) => s.url));
 
   // Only process URLs that actually exist in the room
   const urlsToDelete = message.urls.filter((url) => currentUrls.has(url));

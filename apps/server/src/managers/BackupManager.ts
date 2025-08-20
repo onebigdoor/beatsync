@@ -57,9 +57,20 @@ export class BackupManager {
       // Restore client data
       room.restoreClientData(roomData.clientDatas);
 
-      // Restore playback state
-      if (roomData.playbackState) {
+      // Restore playback state - but validate it first
+      const playbackStateIsValidTrack = validAudioSources.some(
+        (source) => source.url === roomData.playbackState.audioSource
+      );
+
+      if (playbackStateIsValidTrack) {
         room.restorePlaybackState(roomData.playbackState);
+      } else {
+        // Playing track no longer exists - reset to paused state
+        console.log(
+          `Room ${roomId}: Playing track no longer exists, resetting playback to paused`
+        );
+
+        // Don't restore any playback state
       }
 
       // Always schedule cleanup on restoration because we don't know if any clients will reconnect.
@@ -108,8 +119,6 @@ export class BackupManager {
    */
   static async backupState(): Promise<void> {
     try {
-      console.log("🔄 Starting state backup...");
-
       // Collect state from all rooms
       const rooms: ServerBackupType["data"]["rooms"] = {};
 

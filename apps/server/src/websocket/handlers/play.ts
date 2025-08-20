@@ -11,8 +11,14 @@ export const handlePlay: HandlerFunction<
   // Use dynamic scheduling based on max client RTT
   const serverTimeToExecute = room.getScheduledExecutionTime();
 
-  // Update playback state
-  room.updatePlaybackSchedulePlay(message, serverTimeToExecute);
+  // Update playback state - now returns false if track doesn't exist
+  const success = room.updatePlaybackSchedulePlay(message, serverTimeToExecute);
+  
+  if (!success) {
+    // Track doesn't exist, don't broadcast the play command
+    console.warn(`Play command rejected - track not in queue: ${message.audioSource}`);
+    return;
+  }
 
   sendBroadcast({
     server,

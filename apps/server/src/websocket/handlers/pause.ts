@@ -12,7 +12,18 @@ export const handlePause: HandlerFunction<
   const serverTimeToExecute = room.getScheduledExecutionTime();
 
   // Update playback state
-  room.updatePlaybackSchedulePause(message, serverTimeToExecute);
+  const success = room.updatePlaybackSchedulePause(
+    message,
+    serverTimeToExecute
+  );
+
+  if (!success) {
+    // Track doesn't exist, don't broadcast the pause command
+    console.warn(
+      `Pause command rejected - track not in queue: ${message.audioSource}`
+    );
+    return;
+  }
 
   sendBroadcast({
     server,

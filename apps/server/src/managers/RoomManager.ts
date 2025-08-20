@@ -51,7 +51,7 @@ const RoomBackupSchema = z.object({
   clientDatas: z.array(ClientDataSchema),
   audioSources: z.array(AudioSourceSchema),
   globalVolume: z.number().min(0).max(1).default(1.0),
-  playbackState: RoomPlaybackStateSchema.optional(),
+  playbackState: RoomPlaybackStateSchema,
 });
 export type RoomBackupType = z.infer<typeof RoomBackupSchema>;
 
@@ -108,6 +108,10 @@ export class RoomManager {
    */
   getRoomId(): string {
     return this.roomId;
+  }
+
+  getAudioSources(): AudioSourceType[] {
+    return this.audioSources;
   }
 
   getPlaybackControlsPermissions(): PlaybackControlsPermissionsType {
@@ -544,25 +548,62 @@ export class RoomManager {
   updatePlaybackSchedulePause(
     pauseSchema: PauseActionType,
     serverTimeToExecute: number
-  ) {
+  ): boolean {
+    // Validate that the audio source exists in the room (if provided)
+    // Pause can reference a track that might have been deleted, which is ok
+    // But we should validate if the track is specified
+    if (pauseSchema.audioSource) {
+      const trackExists = this.audioSources.some(
+        (source) => source.url === pauseSchema.audioSource
+      );
+
+      if (!trackExists) {
+        console.warn(
+          `Room ${this.roomId}: Attempted to pause non-existent track: ${pauseSchema.audioSource}`
+        );
+        // For pause, we'll still update but with empty audioSource
+        this.playbackState = {
+          type: "paused",
+          audioSource: "",
+          trackPositionSeconds: 0,
+          serverTimeToExecute: serverTimeToExecute,
+        };
+        return false;
+      }
+    }
+
     this.playbackState = {
       type: "paused",
       audioSource: pauseSchema.audioSource,
       trackPositionSeconds: pauseSchema.trackTimeSeconds,
       serverTimeToExecute: serverTimeToExecute,
     };
+    return true;
   }
 
   updatePlaybackSchedulePlay(
     playSchema: PlayActionType,
     serverTimeToExecute: number
-  ) {
+  ): boolean {
+    // Validate that the audio source exists in the room
+    const trackExists = this.audioSources.some(
+      (source) => source.url === playSchema.audioSource
+    );
+
+    if (!trackExists) {
+      console.warn(
+        `Room ${this.roomId}: Attempted to play non-existent track: ${playSchema.audioSource}`
+      );
+      return false;
+    }
+
     this.playbackState = {
       type: "playing",
       audioSource: playSchema.audioSource,
       trackPositionSeconds: playSchema.trackTimeSeconds,
       serverTimeToExecute: serverTimeToExecute,
     };
+    return true;
   }
 
   syncClient(ws: ServerWebSocket<WSData>): void {
