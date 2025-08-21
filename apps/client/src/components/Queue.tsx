@@ -92,13 +92,13 @@ export const Queue = ({ className, ...rest }: React.ComponentProps<"div">) => {
                       mass: 1,
                     },
                     opacity: {
-                      duration: 0.4,
-                      delay: 0.05 * index,
+                      duration: 0.3,
+                      delay: Math.min(0.05 * index, 0.3), // Cap maximum delay at 300ms
                       ease: "easeOut",
                     },
                     y: {
-                      duration: 0.4,
-                      delay: 0.05 * index,
+                      duration: 0.3,
+                      delay: Math.min(0.05 * index, 0.3), // Cap maximum delay at 300ms
                       ease: "easeOut",
                     },
                   }}
