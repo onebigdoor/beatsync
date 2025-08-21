@@ -13,7 +13,7 @@ export const AnnouncementBanner = () => {
       <div className="relative">
         <div className="container mx-auto px-4 py-3">
           <p className="text-xs sm:text-sm font-medium text-center">
-            <span className="font-semibold">{"Aug 19, 2025: "}</span>
+            <span className="font-semibold">{"Aug 21, 2025: "}</span>
             Added real-time room chats!
             {/* <a
               href="#"
