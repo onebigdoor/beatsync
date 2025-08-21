@@ -22,7 +22,7 @@ import {
   SetAudioSourcesType,
   SpatialConfigType,
 } from "@beatsync/shared";
-import { Mutex } from "async-mutex";
+import { Mutex, Semaphore } from "async-mutex";
 import posthog from "posthog-js";
 import { toast } from "sonner";
 import { create } from "zustand";
@@ -298,6 +298,7 @@ const initializeAudioContext = () => {
 };
 
 const initializationMutex = new Mutex();
+const loadingSemaphore = new Semaphore(3); // Max 3 concurrent audio loads
 
 // Selector for canMutate
 export const useCanMutate = () => {
@@ -848,6 +849,8 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
 
       // Stop any existing source node before creating a new one
       try {
+        sourceNode.onended = null;
+        sourceNode.disconnect();
         sourceNode.stop();
       } catch (_) {}
 
@@ -1280,18 +1283,30 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
         }
       }
 
-      // Load all other sources in parallel (don't await)
+      // Load other sources with semaphore control (max 3 concurrent)
       if (otherSourcesToLoad.length > 0) {
         console.log(
-          `Loading ${otherSourcesToLoad.length} additional audio sources in background`
-        );
-        const otherLoadPromises = otherSourcesToLoad.map((as) =>
-          loadAudioBuffer(as.source.url)
+          `Loading ${otherSourcesToLoad.length} additional audio sources with max 3 concurrent`
         );
 
-        // Don't await - let them load in background
-        Promise.all(otherLoadPromises).catch((error) => {
-          console.error("Error loading additional audio sources:", error);
+        const loadPromises = otherSourcesToLoad.map(async (as) => {
+          const [value, release] = await loadingSemaphore.acquire();
+          try {
+            await loadAudioBuffer(as.source.url);
+            console.log(`Audio source ${as.source.url} loaded`);
+          } catch (error) {
+            console.error(
+              `Error loading audio source ${as.source.url}:`,
+              error
+            );
+          } finally {
+            release();
+          }
+        });
+
+        // Fire and forget - don't block on background loads
+        Promise.all(loadPromises).catch((error) => {
+          console.error("Error during background audio loading:", error);
         });
       }
     },
