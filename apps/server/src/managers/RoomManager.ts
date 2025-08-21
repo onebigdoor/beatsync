@@ -1,5 +1,7 @@
 import {
   AudioSourceType,
+  ChatMessageSchema,
+  ChatMessageType,
   ClientDataSchema,
   ClientDataType,
   DiscoveryRoomType,
@@ -23,6 +25,7 @@ import { calculateGainFromDistanceToSource } from "../spatial";
 import { sendBroadcast, sendUnicast } from "../utils/responses";
 import { positionClientsInCircle } from "../utils/spatial";
 import { WSData } from "../utils/websocket";
+import { ChatManager } from "./ChatManager";
 
 interface RoomData {
   audioSources: AudioSourceType[];
@@ -52,6 +55,12 @@ const RoomBackupSchema = z.object({
   audioSources: z.array(AudioSourceSchema),
   globalVolume: z.number().min(0).max(1).default(1.0),
   playbackState: RoomPlaybackStateSchema,
+  chat: z
+    .object({
+      messages: z.array(ChatMessageSchema),
+      nextMessageId: z.number(),
+    })
+    .optional(),
 });
 export type RoomBackupType = z.infer<typeof RoomBackupSchema>;
 
@@ -95,12 +104,14 @@ export class RoomManager {
     string,
     { trackId: string; status: string }
   >();
+  private chatManager: ChatManager;
 
   constructor(
     private readonly roomId: string,
     onClientCountChange?: () => void // To update the global # of clients active
   ) {
     this.onClientCountChange = onClientCountChange;
+    this.chatManager = new ChatManager({ roomId });
   }
 
   /**
@@ -344,6 +355,38 @@ export class RoomManager {
 
   getActiveStreamJobCount(): number {
     return this.activeStreamJobs.size;
+  }
+
+  /**
+   * Add a chat message to the room
+   */
+  addChatMessage({
+    clientId,
+    text,
+  }: {
+    clientId: string;
+    text: string;
+  }): ChatMessageType {
+    const client = this.clientData.get(clientId);
+    if (!client) {
+      throw new Error(`Client ${clientId} not found in room ${this.roomId}`);
+    }
+
+    return this.chatManager.addMessage({ client, text });
+  }
+
+  /**
+   * Get chat history
+   */
+  getFullChatHistory(): ChatMessageType[] {
+    return this.chatManager.getFullHistory();
+  }
+
+  /**
+   * Get the newest message ID
+   */
+  getNewestChatId(): number {
+    return this.chatManager.getNewestId();
   }
 
   /**
@@ -686,6 +729,10 @@ export class RoomManager {
       audioSources: this.audioSources,
       globalVolume: this.globalVolume,
       playbackState: this.playbackState,
+      chat: {
+        messages: this.chatManager.getFullHistory(),
+        nextMessageId: this.chatManager.getNextMessageId(),
+      },
     };
   }
 
@@ -866,5 +913,17 @@ export class RoomManager {
 
   restorePlaybackState(playbackState: RoomPlaybackState): void {
     this.playbackState = playbackState;
+  }
+
+  /**
+   * Restore chat history from backup
+   */
+  restoreChatHistory(chat: {
+    messages: ChatMessageType[];
+    nextMessageId: number;
+  }): void {
+    if (chat.messages.length > 0) {
+      this.chatManager.restoreMessages(chat.messages, chat.nextMessageId);
+    }
   }
 }
