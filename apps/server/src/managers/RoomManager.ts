@@ -100,10 +100,8 @@ export class RoomManager {
   private playbackControlsPermissions: PlaybackControlsPermissionsType =
     "ADMIN_ONLY";
   private globalVolume: number = 1.0; // Default 100% volume
-  private activeStreamJobs = new Map<
-    string,
-    { trackId: string; status: string }
-  >();
+  // Map of trackId to job status
+  private activeStreamJobs = new Map<string, { status: string }>();
   private chatManager: ChatManager;
 
   constructor(
@@ -344,13 +342,18 @@ export class RoomManager {
 
   /**
    * Stream job management methods
+   * Idempotently adds a stream job for a track if not already active.
    */
-  addStreamJob(jobId: string, trackId: string): void {
-    this.activeStreamJobs.set(jobId, { trackId, status: "active" });
+  addStreamJob(trackId: string): void {
+    this.activeStreamJobs.set(trackId, { status: "active" });
   }
 
-  removeStreamJob(jobId: string): void {
-    this.activeStreamJobs.delete(jobId);
+  removeStreamJob(trackId: string): void {
+    this.activeStreamJobs.delete(trackId);
+  }
+
+  hasActiveStreamJob(trackId: string): boolean {
+    return this.activeStreamJobs.has(trackId);
   }
 
   getActiveStreamJobCount(): number {
