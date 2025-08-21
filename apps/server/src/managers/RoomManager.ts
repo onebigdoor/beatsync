@@ -856,7 +856,7 @@ export class RoomManager {
         }
       });
 
-      // Remove stale clients
+      // Close stale client connections
       staleClients.forEach((clientId) => {
         const client = this.clientData.get(clientId);
         if (client) {
@@ -864,24 +864,28 @@ export class RoomManager {
             `🔌 Disconnecting stale client ${clientId} from room ${this.roomId}`
           );
           // Close the WebSocket connection
+          // The onClose handler will call removeClient() when the connection actually closes
           try {
             const ws = this.wsConnections.get(clientId);
             if (!ws) {
               console.error(
                 `❌ No WebSocket connection found for client ${clientId} in room ${this.roomId}`
               );
+              // If there's no WebSocket, we should clean up the orphaned client data
+              this.removeClient(clientId);
               return;
             }
+            // Close the WebSocket - this will trigger the onClose handler
+            // which will properly remove the client from the room
             ws.close(1000, "Connection timeout - no heartbeat response");
-            this.wsConnections.delete(clientId);
           } catch (error) {
             console.error(
               `Error closing WebSocket for client ${clientId}:`,
               error
             );
+            // If closing failed, still try to clean up
+            this.removeClient(clientId);
           }
-          // Remove from room (the close event handler should also call removeClient)
-          this.removeClient(clientId);
         }
       });
     }, NTP_CONSTANTS.STEADY_STATE_INTERVAL_MS);
