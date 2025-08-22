@@ -78,11 +78,11 @@ export const RoomQRCode = () => {
           <div className="flex flex-col items-center space-y-6 pb-6">
             {/* Domain and Room Code Display */}
             <div className="w-full text-center space-y-2">
-              <div className="text-2xl font-semibold text-white">
+              <div className="text-3xl font-semibold text-white">
                 beatsync.gg
               </div>
 
-              <div className="text-3xl font-bold text-white bg-neutral-800/50 border border-neutral-700/50 rounded-lg px-6 py-3 inline-block">
+              <div className="text-3xl font-bold text-white bg-neutral-800/50 border border-neutral-700/50 rounded-lg px-8 py-2 inline-block">
                 {roomId}
               </div>
             </div>
