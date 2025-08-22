@@ -6,13 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import QRCodeLib from "qrcode";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Separator } from "../ui/separator";
 
 export const RoomQRCode = () => {
@@ -76,21 +70,37 @@ export const RoomQRCode = () => {
               <QrCode size={18} className="text-neutral-400" />
               Share Beatsync Room
             </DialogTitle>
-            <DialogDescription className="text-neutral-400 -mt-1.5 text-left">
+            {/* <DialogDescription className="text-neutral-400 -mt-1.5 text-left">
               Scan QR code to join room {roomId}
-            </DialogDescription>
+            </DialogDescription> */}
           </DialogHeader>
           <Separator className="my-0 bg-neutral-800/50" />
-          <div className="flex flex-col items-center space-y-4 pb-6">
-            <div className="w-full lg:px-8">
-              <div className="w-full h-full" style={{ height: "auto" }}>
-                {qrCodeDataUrl && (
-                  <img
-                    src={qrCodeDataUrl}
-                    alt="Room QR Code"
-                    className="w-full h-full"
-                  />
-                )}
+          <div className="flex flex-col items-center space-y-6 pb-6">
+            {/* Domain and Room Code Display */}
+            <div className="w-full text-center space-y-2">
+              <div className="text-2xl font-semibold text-white">
+                beatsync.gg
+              </div>
+
+              <div className="text-3xl font-bold text-white bg-neutral-800/50 border border-neutral-700/50 rounded-lg px-6 py-3 inline-block">
+                {roomId}
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="text-neutral-400 text-xs text-center mb-2">
+                OR SCAN
+              </div>
+              <div className="w-full lg:px-8">
+                <div className="w-full h-full" style={{ height: "auto" }}>
+                  {qrCodeDataUrl && (
+                    <img
+                      src={qrCodeDataUrl}
+                      alt="Room QR Code"
+                      className="w-full h-full"
+                    />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -105,7 +115,7 @@ export const RoomQRCode = () => {
                 </div>
                 <div className="flex flex-col items-start">
                   <span className="text-xs text-neutral-500 uppercase tracking-wide">
-                    Room URL
+                    Full URL
                   </span>
                   <span className="text-sm font-mono text-white truncate max-w-[50vw]">
                     {roomUrl}
