@@ -140,23 +140,33 @@ export class RoomManager {
 
     const { username, clientId } = ws.data;
 
-    // Check if this username has cached admin status
-    const cachedClient = this.clientData.get(clientId);
-
-    // The first client to join a room will always be an admin, otherwise they are an admin if they were an admin in the past
-    const isAdmin = cachedClient?.isAdmin || this.clientData.size === 0;
-
-    // 1) Set client data
-    this.clientData.set(clientId, {
+    // Check if this client has cached data from a previous connection
+    const clientData: ClientDataType = {
       joinedAt: Date.now(),
       username,
       clientId,
-      isAdmin,
+      isAdmin: false,
       rtt: 0,
       position: { x: GRID.ORIGIN_X, y: GRID.ORIGIN_Y - 25 }, // Initial position at center
       lastNtpResponse: Date.now(), // Initialize last NTP response time
-    });
-    // 2) Set ws connection (actually adds to room)
+    };
+
+    const cachedClient = this.clientData.get(clientId);
+
+    // Restore some specific fields.
+    if (cachedClient) {
+      clientData.username = cachedClient.username;
+      clientData.location = cachedClient.location;
+      clientData.isAdmin = cachedClient.isAdmin;
+      clientData.joinedAt = cachedClient.joinedAt;
+    }
+
+    // Always ensure that the first client to join an empty room becomes admin regardless
+    if (this.wsConnections.size === 0) {
+      clientData.isAdmin = true;
+    }
+
+    this.clientData.set(clientId, clientData);
     this.wsConnections.set(clientId, ws);
 
     positionClientsInCircle(this.getClients());
@@ -172,8 +182,7 @@ export class RoomManager {
    * Remove a client from the room
    */
   removeClient(clientId: string): void {
-    // Actually remove the client from both maps
-    this.clientData.delete(clientId);
+    // Only remove from wsConnections, keep clientData for rejoin scenarios
     this.wsConnections.delete(clientId);
 
     const activeClients = this.getClients();
