@@ -25,7 +25,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Beatsync",
   description:
-    "Beatsync is an open-source, web audio player built for multi-device playback.",
+    "Beatsync is an open-source, web audio player built for multi-device playback. Never worry about having a speaker again. ",
   keywords: ["music", "sync", "audio", "collaboration", "real-time"],
   authors: [{ name: "Freeman Jiang" }],
 };
