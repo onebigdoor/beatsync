@@ -25,22 +25,30 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Beatsync",
   description:
-    "Beatsync is an open-source, web audio player built for multi-device playback. Never worry about having a speaker again. ",
+    "Turn every device into a synchronized speaker. Beatsync is an open-source audio player for multi-device playback. Host a listening party today and never worry about speakers again.",
   keywords: ["music", "sync", "audio", "collaboration", "real-time"],
   authors: [{ name: "Freeman Jiang" }],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Beatsync",
+  },
+  icons: {
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body
         className={cn(
           geistSans.variable,
           geistMono.variable,
           inter.variable,
-          "antialiased font-sans dark selection:bg-primary-800 selection:text-white"
+          "antialiased font-sans selection:bg-primary-800 selection:text-white"
         )}
       >
         <PostHogProvider>
