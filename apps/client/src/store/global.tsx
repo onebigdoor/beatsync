@@ -116,6 +116,7 @@ interface GlobalStateValues {
 interface GlobalState extends GlobalStateValues {
   // Methods
   getAudioDuration: ({ url }: { url: string }) => number;
+  getSelectedTrack: () => AudioSourceState | null;
   handleSetAudioSources: (data: SetAudioSourcesType) => void;
 
   setIsInitingSystem: (isIniting: boolean) => void;
@@ -1165,6 +1166,15 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
         return 0;
       }
       return audioSource.buffer.duration;
+    },
+
+    getSelectedTrack: () => {
+      const state = get();
+      if (!state.selectedAudioUrl) return null;
+      
+      return state.audioSources.find(
+        (as) => as.source.url === state.selectedAudioUrl
+      ) || null;
     },
 
     async handleSetAudioSources({ sources, currentAudioSource }) {

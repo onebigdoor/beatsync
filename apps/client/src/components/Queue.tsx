@@ -26,6 +26,7 @@ export const Queue = ({ className, ...rest }: React.ComponentProps<"div">) => {
   const broadcastPause = useGlobalStore((state) => state.broadcastPause);
   const isPlaying = useGlobalStore((state) => state.isPlaying);
   const getAudioDuration = useGlobalStore((state) => state.getAudioDuration);
+  const getSelectedTrack = useGlobalStore((state) => state.getSelectedTrack);
   const canMutate = useCanMutate();
   // socket handled by child button component when needed
 
@@ -65,7 +66,8 @@ export const Queue = ({ className, ...rest }: React.ComponentProps<"div">) => {
           <AnimatePresence initial={true}>
             {/* Ensure keys are stable and unique even if duplicates attempted */}
             {audioSources.map((sourceState, index) => {
-              const isSelected = sourceState.source.url === selectedAudioId;
+              const selectedTrack = getSelectedTrack();
+              const isSelected = selectedTrack?.source.url === sourceState.source.url;
               const isPlayingThis = isSelected && isPlaying;
               const isLoading = sourceState.status === "loading";
               const isError = sourceState.status === "error";

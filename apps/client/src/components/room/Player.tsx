@@ -31,27 +31,24 @@ export const Player = () => {
   );
   const isShuffled = useGlobalStore((state) => state.isShuffled);
   const toggleShuffle = useGlobalStore((state) => state.toggleShuffle);
+  const getSelectedTrack = useGlobalStore((state) => state.getSelectedTrack);
 
   // Local state for slider
   const [sliderPosition, setSliderPosition] = useState(0);
   const [trackDuration, setTrackDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  const getAudioDuration = useGlobalStore((state) => state.getAudioDuration);
-
   // Find the selected audio source and its duration
   useEffect(() => {
     if (!selectedAudioId) return;
 
-    const audioSource = audioSources.find(
-      (sourceState) => sourceState.source.url === selectedAudioId
-    );
-    if (audioSource) {
-      setTrackDuration(getAudioDuration({ url: audioSource.source.url }));
+    const track = getSelectedTrack();
+    if (track && track.status === "loaded" && track.buffer) {
+      setTrackDuration(track.buffer.duration);
       // Reset slider position when track changes
       setSliderPosition(0);
     }
-  }, [selectedAudioId, audioSources, getAudioDuration]);
+  }, [selectedAudioId, getSelectedTrack]);
 
   // Sync with currentTime when it changes (e.g., after pausing)
   useEffect(() => {
