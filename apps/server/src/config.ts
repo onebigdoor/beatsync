@@ -19,7 +19,7 @@ const CAP_SCHEDULE_TIME_MS = 3_000; // Maximum scheduling delay
  * @param maxRTT Maximum RTT among all clients in milliseconds
  * @returns Scheduling delay in milliseconds
  */
-export function calculateScheduleTime(maxRTT: number): number {
+export function calculateScheduleTimeMs(maxRTT: number): number {
   // Use 1.5x the max RTT with a minimum of 400ms
   // The 1.5x factor provides buffer for jitter and processing time
   const dynamicDelay = Math.max(MIN_SCHEDULE_TIME_MS, maxRTT * 1.5 + 200);

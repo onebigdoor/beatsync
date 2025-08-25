@@ -19,7 +19,7 @@ import { AudioSourceSchema, GRID } from "@beatsync/shared/types/basic";
 import { SendLocationSchema } from "@beatsync/shared/types/WSRequest";
 import { Server, ServerWebSocket } from "bun";
 import { z } from "zod";
-import { calculateScheduleTime, DEFAULT_CLIENT_RTT_MS } from "../config";
+import { calculateScheduleTimeMs, DEFAULT_CLIENT_RTT_MS } from "../config";
 import { deleteObjectsWithPrefix } from "../lib/r2";
 import { calculateGainFromDistanceToSource } from "../spatial";
 import { sendBroadcast, sendUnicast } from "../utils/responses";
@@ -422,13 +422,15 @@ export class RoomManager {
    * Get the scheduled execution time based on dynamic RTT
    * @returns Server timestamp when the action should be executed
    */
-  getScheduledExecutionTime(): number {
+  getScheduledExecutionTime(
+    opts: { extraOffsetMs: number } = { extraOffsetMs: 0 }
+  ): number {
     const maxRTT = this.getMaxClientRTT();
-    const scheduleDelay = calculateScheduleTime(maxRTT);
+    const scheduleDelayMs = calculateScheduleTimeMs(maxRTT);
     console.log(
-      `Scheduling with dynamic delay: ${scheduleDelay}ms (max RTT: ${maxRTT}ms)`
+      `Scheduling with dynamic delay: ${scheduleDelayMs}ms (max RTT: ${maxRTT}ms)`
     );
-    return epochNow() + scheduleDelay;
+    return epochNow() + scheduleDelayMs + opts.extraOffsetMs;
   }
 
   /**
@@ -678,7 +680,9 @@ export class RoomManager {
     const now = epochNow();
 
     // Use dynamic scheduling based on max client RTT
-    const serverTimeToExecute = this.getScheduledExecutionTime();
+    const serverTimeToExecute = this.getScheduledExecutionTime({
+      extraOffsetMs: 1500, // Another extra 1.5 seconds to sync
+    });
 
     // Calculate how much time has elapsed since playback started
     const timeElapsedSincePlaybackStarted = now - serverTimeWhenPlaybackStarted;
