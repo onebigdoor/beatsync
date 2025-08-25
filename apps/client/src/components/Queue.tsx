@@ -18,9 +18,7 @@ export const Queue = ({ className, ...rest }: React.ComponentProps<"div">) => {
   const posthog = usePostHog();
   const audioSources = useGlobalStore((state) => state.audioSources);
   const selectedAudioId = useGlobalStore((state) => state.selectedAudioUrl);
-  const setSelectedAudioId = useGlobalStore(
-    (state) => state.setSelectedAudioUrl
-  );
+  const changeAudioSource = useGlobalStore((state) => state.changeAudioSource);
   const isInitingSystem = useGlobalStore((state) => state.isInitingSystem);
   const broadcastPlay = useGlobalStore((state) => state.broadcastPlay);
   const broadcastPause = useGlobalStore((state) => state.broadcastPause);
@@ -53,7 +51,7 @@ export const Queue = ({ className, ...rest }: React.ComponentProps<"div">) => {
         posthog.capture("play_track", { track_id: source.url });
       }
     } else {
-      setSelectedAudioId(source.url);
+      changeAudioSource(source.url);
       broadcastPlay(0);
     }
   };
@@ -67,7 +65,8 @@ export const Queue = ({ className, ...rest }: React.ComponentProps<"div">) => {
             {/* Ensure keys are stable and unique even if duplicates attempted */}
             {audioSources.map((sourceState, index) => {
               const selectedTrack = getSelectedTrack();
-              const isSelected = selectedTrack?.source.url === sourceState.source.url;
+              const isSelected =
+                selectedTrack?.source.url === sourceState.source.url;
               const isPlayingThis = isSelected && isPlaying;
               const isLoading = sourceState.status === "loading";
               const isError = sourceState.status === "error";

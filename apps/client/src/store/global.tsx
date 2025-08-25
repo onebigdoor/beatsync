@@ -10,7 +10,7 @@ import {
 } from "@/utils/ntp";
 import { sendWSRequest } from "@/utils/ws";
 import {
-  AudioSourceType,
+  AudioSourceSchema,
   ClientActionEnum,
   ClientDataType,
   GlobalVolumeConfigType,
@@ -42,13 +42,30 @@ enum AudioPlayerError {
   NotInitialized = "NOT_INITIALIZED",
 }
 
-// Audio source with loading state
-export interface AudioSourceState {
-  source: AudioSourceType;
-  status: "loading" | "loaded" | "error";
-  buffer?: AudioBuffer;
-  error?: string;
-}
+import { z } from "zod";
+
+// Discriminated union for AudioSourceState using zod
+export const AudioSourceStateSchema = z.discriminatedUnion("status", [
+  z.object({
+    source: AudioSourceSchema,
+    status: z.literal("idle"),
+  }),
+  z.object({
+    source: AudioSourceSchema,
+    status: z.literal("loading"),
+  }),
+  z.object({
+    source: AudioSourceSchema,
+    status: z.literal("loaded"),
+    buffer: z.custom<AudioBuffer>(),
+  }),
+  z.object({
+    source: AudioSourceSchema,
+    status: z.literal("error"),
+    error: z.string(),
+  }),
+]);
+export type AudioSourceState = z.infer<typeof AudioSourceStateSchema>;
 
 // Interface for just the state values (without methods)
 interface GlobalStateValues {
@@ -122,7 +139,7 @@ interface GlobalState extends GlobalStateValues {
   setIsInitingSystem: (isIniting: boolean) => void;
   reorderClient: (clientId: string) => void;
   setAdminStatus: (clientId: string, isAdmin: boolean) => void;
-  setSelectedAudioUrl: (url: string) => boolean;
+  changeAudioSource: (url: string) => boolean;
   findAudioIndexByUrl: (url: string) => number | null;
   schedulePlay: (data: {
     trackTimeSeconds: number;
@@ -480,7 +497,14 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
       set({ isInitingSystem: isIniting });
     },
 
-    setSelectedAudioUrl: (url) => {
+    /**
+     * Switches the current audio track to the given URL.
+     * - Stops any current playback immediately.
+     * - Resets playback state (currentTime, playbackStartTime, playbackOffset, isPlaying).
+     * - Updates selectedAudioUrl and duration (if available).
+     * - Returns whether playback was active before the change (for skip logic).
+     */
+    changeAudioSource: (url) => {
       const state = get();
       const wasPlaying = state.isPlaying; // Store if it was playing *before* stopping
 
@@ -853,6 +877,10 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
         );
         return;
       }
+      if (audioSourceState.status === "idle") {
+        console.error("Track is in idle state");
+        return;
+      }
 
       const audioBuffer = audioSourceState.buffer;
       if (!audioBuffer) {
@@ -1043,7 +1071,7 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
       const nextAudioId = audioSources[nextIndex].source.url;
       // setSelectedAudioId stops any current playback and sets isPlaying to false.
       // It returns true if playback was active *before* this function was called.
-      const wasPlayingBeforeSkip = state.setSelectedAudioUrl(nextAudioId);
+      const wasPlayingBeforeSkip = state.changeAudioSource(nextAudioId);
 
       // If the track was playing before a manual skip OR if this is an autoplay event,
       // start playing the next track from the beginning.
@@ -1078,7 +1106,7 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
 
       // setSelectedAudioId stops any current playback and sets isPlaying to false.
       // It returns true if playback was active *before* this function was called.
-      const wasPlayingBeforeSkip = state.setSelectedAudioUrl(prevAudioId);
+      const wasPlayingBeforeSkip = state.changeAudioSource(prevAudioId);
 
       // If the track was playing before the manual skip, start playing the previous track.
       if (wasPlayingBeforeSkip) {
@@ -1171,10 +1199,12 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
     getSelectedTrack: () => {
       const state = get();
       if (!state.selectedAudioUrl) return null;
-      
-      return state.audioSources.find(
-        (as) => as.source.url === state.selectedAudioUrl
-      ) || null;
+
+      return (
+        state.audioSources.find(
+          (as) => as.source.url === state.selectedAudioUrl
+        ) || null
+      );
     },
 
     async handleSetAudioSources({ sources, currentAudioSource }) {
