@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Beatsync",
     short_name: "Beatsync",
     description:
-      "Turn every device into a synchronized speaker. Beatsync is an open-source audio player for multi-device playback. Host a listening party today and never worry about speakers again.",
+      "Turn every device into a synchronized speaker. Beatsync is an open-source music player for multi-device audio playback. Host a listening party today.",
     start_url: "/",
     display: "standalone",
     background_color: "#111111",
