@@ -33,9 +33,6 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Beatsync",
   },
-  icons: {
-    apple: "/icon.png",
-  },
 };
 
 export default function RootLayout({
