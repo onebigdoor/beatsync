@@ -10,7 +10,7 @@ import {
   SkipForward,
 } from "lucide-react";
 import { usePostHog } from "posthog-js/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Slider } from "../ui/slider";
 
 export const Player = () => {
@@ -37,25 +37,56 @@ export const Player = () => {
   const [sliderPosition, setSliderPosition] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Sync with currentTime when it changes (e.g., after pausing)
+  // Refs for smooth animation without re-renders
+  const currentPositionRef = useRef(0);
+  const animationFrameRef = useRef<number>(0);
+
+  // Sync with currentTime when paused or changed externally
   useEffect(() => {
     if (!isPlaying) {
-      setSliderPosition(currentTime);
+      const newPosition = currentTime;
+      setSliderPosition(newPosition);
+      currentPositionRef.current = newPosition;
     }
   }, [currentTime, isPlaying]);
 
-  // Update slider position during playback
+  // Smooth position updates using requestAnimationFrame
   useEffect(() => {
     if (!isPlaying) return;
 
-    const interval = setInterval(() => {
-      if (!isDragging) {
-        const currentPosition = getCurrentTrackPosition();
-        setSliderPosition(currentPosition);
-      }
-    }, 100); // Update every 100ms
+    let lastUpdateTime = performance.now();
 
-    return () => clearInterval(interval);
+    const animate = () => {
+      if (isDragging) {
+        // Continue animation but don't update slider
+        animationFrameRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
+      const currentPosition = getCurrentTrackPosition();
+      currentPositionRef.current = currentPosition;
+
+      // Only update React state periodically to reduce re-renders
+      // Update every ~250ms for visual feedback, but track internally at 60fps
+      const now = performance.now();
+      if (now - lastUpdateTime > 250) {
+        setSliderPosition(currentPosition);
+        lastUpdateTime = now;
+      }
+
+      // Continue animation
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    // Start animation
+    animationFrameRef.current = requestAnimationFrame(animate);
+
+    // Cleanup
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, [isPlaying, getCurrentTrackPosition, isDragging]);
 
   // Handle slider change
@@ -75,6 +106,10 @@ export const Player = () => {
       if (!canMutate) return;
       const newPosition = value[0];
       setIsDragging(false);
+
+      // Update refs to match the committed position
+      currentPositionRef.current = newPosition;
+
       // If currently playing, broadcast play at new position
       // If paused, just update position without playing
       if (isPlaying) {
@@ -83,7 +118,7 @@ export const Player = () => {
         setSliderPosition(newPosition);
       }
     },
-    [canMutate, broadcastPlay, isPlaying, setSliderPosition]
+    [canMutate, broadcastPlay, isPlaying]
   );
 
   const handlePlay = useCallback(() => {
@@ -92,9 +127,11 @@ export const Player = () => {
       broadcastPause();
       posthog.capture("pause_track", { track_id: selectedAudioId });
     } else {
-      broadcastPlay(sliderPosition);
+      // Use ref value for most accurate position when resuming
+      const position = currentPositionRef.current || sliderPosition;
+      broadcastPlay(position);
       posthog.capture("play_track", {
-        position: sliderPosition,
+        position: position,
         track_id: selectedAudioId,
       });
     }
@@ -230,7 +267,7 @@ export const Player = () => {
             value={[sliderPosition]}
             min={0}
             max={trackDuration}
-            step={0.1}
+            step={0.01}
             onValueChange={handleSliderChange}
             onValueCommit={handleSliderCommit}
             disabled={!canMutate}
