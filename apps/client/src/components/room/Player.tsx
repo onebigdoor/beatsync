@@ -31,24 +31,11 @@ export const Player = () => {
   );
   const isShuffled = useGlobalStore((state) => state.isShuffled);
   const toggleShuffle = useGlobalStore((state) => state.toggleShuffle);
-  const getSelectedTrack = useGlobalStore((state) => state.getSelectedTrack);
+  const trackDuration = useGlobalStore((state) => state.duration);
 
   // Local state for slider
   const [sliderPosition, setSliderPosition] = useState(0);
-  const [trackDuration, setTrackDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-
-  // Find the selected audio source and its duration
-  useEffect(() => {
-    if (!selectedAudioId) return;
-
-    const track = getSelectedTrack();
-    if (track && track.status === "loaded" && track.buffer) {
-      setTrackDuration(track.buffer.duration);
-      // Reset slider position when track changes
-      setSliderPosition(0);
-    }
-  }, [selectedAudioId, getSelectedTrack]);
 
   // Sync with currentTime when it changes (e.g., after pausing)
   useEffect(() => {
@@ -96,15 +83,7 @@ export const Player = () => {
         setSliderPosition(newPosition);
       }
     },
-    [
-      canMutate,
-      broadcastPlay,
-      isPlaying,
-      setSliderPosition,
-      posthog,
-      selectedAudioId,
-      trackDuration,
-    ]
+    [canMutate, broadcastPlay, isPlaying, setSliderPosition]
   );
 
   const handlePlay = useCallback(() => {
