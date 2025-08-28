@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useChatStore } from "@/store/chat";
 import { useGlobalStore } from "@/store/global";
 import { formatChatTimestamp } from "@/utils/time";
-import { MessageCircle } from "lucide-react";
+import { ChevronDown, MessageCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
@@ -32,6 +32,11 @@ export const Chat = () => {
   const sendChatMessage = useGlobalStore((state) => state.sendChatMessage);
   const currentUser = useGlobalStore((state) => state.currentUser);
 
+  // Calculate new messages since user started scrolling
+  const newMessageCount = isUserScrolling
+    ? currentMessages.length - messageCountSnapshot.current
+    : 0;
+
   // State transition detection: Capture message count when scrolling starts
   const handleScrollTransition = (
     wasScrolling: boolean,
@@ -40,13 +45,9 @@ export const Chat = () => {
     if (!wasScrolling && isScrolling) {
       // User started scrolling - snapshot the current message count
       messageCountSnapshot.current = currentMessages.length;
-      console.log("Started scrolling, snapshot:", messageCountSnapshot.current);
     } else if (wasScrolling && !isScrolling) {
-      // User stopped scrolling - could clear snapshot or perform other actions
-      console.log(
-        "Stopped scrolling, had snapshot of:",
-        messageCountSnapshot.current
-      );
+      // User stopped scrolling - update snapshot to current count
+      messageCountSnapshot.current = currentMessages.length;
     }
   };
 
@@ -60,16 +61,12 @@ export const Chat = () => {
     // Only auto-scroll if new messages were actually added
     const hasNewMessages = currentMessages.length > prevMessageCountRef.current;
 
-    if (hasNewMessages && !isUserScrolling && scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]"
-      );
-      if (scrollContainer) {
-        // Immediate scroll to match snappy animation
-        scrollContainer.scrollTo({
-          top: scrollContainer.scrollHeight,
-          behavior: "smooth",
-        });
+    if (hasNewMessages) {
+      if (!isUserScrolling) {
+        // Auto-scroll to bottom for new messages
+        scrollToBottom("smooth");
+      } else {
+        // Update prevMessageCountRef even when scrolling to track total messages
         prevMessageCountRef.current = currentMessages.length;
       }
     }
@@ -115,7 +112,8 @@ export const Chat = () => {
     if (message.trim() && !isComposing) {
       sendChatMessage(message.trim());
       setMessage("");
-      setIsUserScrolling(false); // Reset scrolling flag when user sends a message
+      // Scroll to bottom instantly when sending a message
+      scrollToBottom("auto");
       if (inputRef.current) {
         inputRef.current.style.height = "auto";
       }
@@ -126,6 +124,22 @@ export const Chat = () => {
     if (e.key === "Enter" && !e.shiftKey && !isComposing) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    const scrollContainer = scrollAreaRef.current?.querySelector(
+      "[data-radix-scroll-area-viewport]"
+    );
+    if (scrollContainer) {
+      scrollContainer.scrollTo({
+        top: scrollContainer.scrollHeight,
+        behavior,
+      });
+      // Reset scrolling state and update all refs consistently
+      setIsUserScrolling(false);
+      messageCountSnapshot.current = currentMessages.length;
+      prevMessageCountRef.current = currentMessages.length;
     }
   };
 
@@ -310,8 +324,29 @@ export const Chat = () => {
         </ScrollArea>
       </div>
 
-      {/* Gradient overlay at top for smooth transition */}
-      {/* <div className="absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-neutral-900 to-transparent pointer-events-none z-10" /> */}
+      {/* New Messages Pill */}
+      <AnimatePresence>
+        {isUserScrolling && newMessageCount > 0 && (
+          <motion.button
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{
+              type: "spring",
+              stiffness: 500,
+              damping: 30,
+            }}
+            onClick={() => scrollToBottom()}
+            className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-3 py-1.5 bg-green-800 hover:bg-green-700 text-white text-xs font-medium rounded-full shadow-lg shadow-green-900/40 transition-colors"
+            style={{ bottom: `${inputAreaHeight + 16}px` }}
+          >
+            <ChevronDown className="w-3 h-3" />
+            {newMessageCount === 1
+              ? "1 new message"
+              : `${newMessageCount} new messages`}
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Input Area - Fixed at bottom */}
       <div
