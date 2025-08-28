@@ -9,7 +9,7 @@ import { useGlobalStore } from "@/store/global";
 import { formatChatTimestamp } from "@/utils/time";
 import { MessageCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Constants
 const MESSAGE_GROUP_TIME_WINDOW_MS = 1 * 60 * 1000; // 1 minute
@@ -33,25 +33,22 @@ export const Chat = () => {
   const currentUser = useGlobalStore((state) => state.currentUser);
 
   // State transition detection: Capture message count when scrolling starts
-  const handleScrollTransition = useCallback(
-    (wasScrolling: boolean, isScrolling: boolean) => {
-      if (!wasScrolling && isScrolling) {
-        // User started scrolling - snapshot the current message count
-        messageCountSnapshot.current = currentMessages.length;
-        console.log(
-          "Started scrolling, snapshot:",
-          messageCountSnapshot.current
-        );
-      } else if (wasScrolling && !isScrolling) {
-        // User stopped scrolling - could clear snapshot or perform other actions
-        console.log(
-          "Stopped scrolling, had snapshot of:",
-          messageCountSnapshot.current
-        );
-      }
-    },
-    [currentMessages.length]
-  );
+  const handleScrollTransition = (
+    wasScrolling: boolean,
+    isScrolling: boolean
+  ) => {
+    if (!wasScrolling && isScrolling) {
+      // User started scrolling - snapshot the current message count
+      messageCountSnapshot.current = currentMessages.length;
+      console.log("Started scrolling, snapshot:", messageCountSnapshot.current);
+    } else if (wasScrolling && !isScrolling) {
+      // User stopped scrolling - could clear snapshot or perform other actions
+      console.log(
+        "Stopped scrolling, had snapshot of:",
+        messageCountSnapshot.current
+      );
+    }
+  };
 
   useStateTransition({
     trackedValue: isUserScrolling,
@@ -187,7 +184,7 @@ export const Chat = () => {
           </AnimatePresence>
 
           {/* Messages */}
-          <div className="space-y-2">
+          <div className="space-y-2 pb-2">
             {groupedMessages.map((group, groupIndex) => {
               const isOwnMessage = group[0].clientId === currentUser?.clientId;
 
