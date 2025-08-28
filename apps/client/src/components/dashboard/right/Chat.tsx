@@ -1,6 +1,7 @@
 "use client";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useStateTransition } from "@/hooks/useStateTransition";
 import { countryCodeEmoji } from "@/lib/country/countryCode";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/store/chat";
@@ -8,7 +9,7 @@ import { useGlobalStore } from "@/store/global";
 import { formatChatTimestamp } from "@/utils/time";
 import { MessageCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Constants
 const MESSAGE_GROUP_TIME_WINDOW_MS = 1 * 60 * 1000; // 1 minute
@@ -24,14 +25,45 @@ export const Chat = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const inputAreaRef = useRef<HTMLDivElement>(null);
+  const prevMessageCountRef = useRef(0);
+  const messageCountSnapshot = useRef(0);
 
-  const messages = useChatStore((state) => state.messages);
+  const currentMessages = useChatStore((state) => state.messages);
   const sendChatMessage = useGlobalStore((state) => state.sendChatMessage);
   const currentUser = useGlobalStore((state) => state.currentUser);
 
+  // State transition detection: Capture message count when scrolling starts
+  const handleScrollTransition = useCallback(
+    (wasScrolling: boolean, isScrolling: boolean) => {
+      if (!wasScrolling && isScrolling) {
+        // User started scrolling - snapshot the current message count
+        messageCountSnapshot.current = currentMessages.length;
+        console.log(
+          "Started scrolling, snapshot:",
+          messageCountSnapshot.current
+        );
+      } else if (wasScrolling && !isScrolling) {
+        // User stopped scrolling - could clear snapshot or perform other actions
+        console.log(
+          "Stopped scrolling, had snapshot of:",
+          messageCountSnapshot.current
+        );
+      }
+    },
+    [currentMessages.length]
+  );
+
+  useStateTransition({
+    trackedValue: isUserScrolling,
+    onTransition: handleScrollTransition,
+  });
+
   // Auto-scroll to bottom when new messages arrive (only if not manually scrolling)
   useEffect(() => {
-    if (!isUserScrolling && scrollAreaRef.current) {
+    // Only auto-scroll if new messages were actually added
+    const hasNewMessages = currentMessages.length > prevMessageCountRef.current;
+
+    if (hasNewMessages && !isUserScrolling && scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector(
         "[data-radix-scroll-area-viewport]"
       );
@@ -41,9 +73,10 @@ export const Chat = () => {
           top: scrollContainer.scrollHeight,
           behavior: "smooth",
         });
+        prevMessageCountRef.current = currentMessages.length;
       }
     }
-  }, [messages, isUserScrolling]);
+  }, [currentMessages, isUserScrolling]);
 
   // Handle scroll events to detect user scrolling
   useEffect(() => {
@@ -105,7 +138,7 @@ export const Chat = () => {
   };
 
   // Group messages by time proximity (within 3 minutes) and sender
-  const groupedMessages = messages.reduce((groups, msg, index) => {
+  const groupedMessages = currentMessages.reduce((groups, msg, index) => {
     if (index === 0) {
       return [[msg]];
     }
@@ -122,7 +155,7 @@ export const Chat = () => {
     }
 
     return groups;
-  }, [] as (typeof messages)[]);
+  }, [] as (typeof currentMessages)[]);
 
   return (
     <div className="relative h-full overflow-hidden">
@@ -131,7 +164,7 @@ export const Chat = () => {
         <ScrollArea ref={scrollAreaRef} className="h-full px-2 pt-3">
           {/* Empty state */}
           <AnimatePresence>
-            {messages.length === 0 && (
+            {currentMessages.length === 0 && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
