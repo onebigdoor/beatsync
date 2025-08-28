@@ -125,25 +125,12 @@ export const Player = () => {
     if (!canMutate) return;
     if (isPlaying) {
       broadcastPause();
-      posthog.capture("pause_track", { track_id: selectedAudioId });
     } else {
       // Use ref value for most accurate position when resuming
       const position = currentPositionRef.current || sliderPosition;
       broadcastPlay(position);
-      posthog.capture("play_track", {
-        position: position,
-        track_id: selectedAudioId,
-      });
     }
-  }, [
-    canMutate,
-    isPlaying,
-    broadcastPause,
-    broadcastPlay,
-    sliderPosition,
-    posthog,
-    selectedAudioId,
-  ]);
+  }, [canMutate, isPlaying, broadcastPause, broadcastPlay, sliderPosition]);
 
   const handleSkipBack = useCallback(() => {
     if (!canMutate) return;
