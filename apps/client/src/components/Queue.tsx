@@ -11,11 +11,9 @@ import {
   Play,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { usePostHog } from "posthog-js/react";
 import LoadDefaultTracksButton from "./LoadDefaultTracksButton";
 
 export const Queue = ({ className, ...rest }: React.ComponentProps<"div">) => {
-  const posthog = usePostHog();
   const audioSources = useGlobalStore((state) => state.audioSources);
   const selectedAudioId = useGlobalStore((state) => state.selectedAudioUrl);
   const changeAudioSource = useGlobalStore((state) => state.changeAudioSource);
@@ -45,10 +43,8 @@ export const Queue = ({ className, ...rest }: React.ComponentProps<"div">) => {
     if (source.url === selectedAudioId) {
       if (isPlaying) {
         broadcastPause();
-        posthog.capture("pause_track", { track_id: source.url });
       } else {
         broadcastPlay();
-        posthog.capture("play_track", { track_id: source.url });
       }
     } else {
       changeAudioSource(source.url);
