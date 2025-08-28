@@ -337,7 +337,7 @@ export const Chat = () => {
               damping: 30,
             }}
             onClick={() => scrollToBottom()}
-            className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-3 py-1.5 bg-green-800 hover:bg-green-700 text-white text-xs font-medium rounded-full shadow-lg shadow-green-900/40 transition-colors"
+            className="absolute left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 px-3 py-1.5 bg-green-800 hover:bg-green-700 text-white text-xs font-medium rounded-full shadow-lg shadow-green-900/40 transition-shadow duration-300 hover:shadow-green-900/60"
             style={{ bottom: `${inputAreaHeight + 16}px` }}
           >
             <ChevronDown className="w-3 h-3" />
