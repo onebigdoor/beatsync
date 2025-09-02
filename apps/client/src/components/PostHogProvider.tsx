@@ -15,7 +15,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         autocapture: false, // Disable auto-capture of clicks, forms, inputs
         capture_pageview: false, // We capture pageviews manually
         capture_pageleave: true, // Enable pageleave capture
-        capture_performance: true, // Enable web vitals capture,
+        capture_performance: false, // Enable web vitals capture,
         capture_heatmaps: false,
         // debug: process.env.NODE_ENV === "development",
       });
