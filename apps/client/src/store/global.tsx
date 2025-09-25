@@ -15,6 +15,7 @@ import {
   ClientDataType,
   GlobalVolumeConfigType,
   GRID,
+  LoadAudioSourceType,
   NTP_CONSTANTS,
   PlaybackControlsPermissionsEnum,
   PlaybackControlsPermissionsType,
@@ -23,12 +24,15 @@ import {
   SetAudioSourcesType,
   SpatialConfigType,
 } from "@beatsync/shared";
-import { Mutex, Semaphore } from "async-mutex";
+import { Mutex } from "async-mutex";
 import posthog from "posthog-js";
 import { toast } from "sonner";
 import { create } from "zustand";
 
 export const MAX_NTP_MEASUREMENTS = NTP_CONSTANTS.MAX_MEASUREMENTS;
+
+// LRU Cache configuration for audio buffers
+const MAX_CACHED_BUFFERS = 3;
 
 // https://webaudioapi.com/book/Web_Audio_API_Boris_Smus_html/ch02.html
 
@@ -71,6 +75,7 @@ export type AudioSourceState = z.infer<typeof AudioSourceStateSchema>;
 interface GlobalStateValues {
   // Audio Sources
   audioSources: AudioSourceState[]; // Playlist with loading states
+  bufferAccessQueue: string[]; // Track URL access order for LRU eviction
   isInitingSystem: boolean;
   hasUserStartedSystem: boolean; // Track if user has clicked "Start System" at least once
   selectedAudioUrl: string;
@@ -206,12 +211,16 @@ interface GlobalState extends GlobalStateValues {
 
   // Stream job methods
   setActiveStreamJobs: (count: number) => void;
+
+  // Audio source methods
+  handleLoadAudioSource: (sources: LoadAudioSourceType) => void;
 }
 
 // Define initial state values
 const initialState: GlobalStateValues = {
   // Audio Sources
   audioSources: [],
+  bufferAccessQueue: [],
 
   // Audio playback state
   isPlaying: false,
@@ -295,7 +304,7 @@ const getWaitTimeSeconds = (state: GlobalState, targetServerTime: number) => {
   return waitTimeMilliseconds / 1000;
 };
 
-const loadAudioSourceUrl = async ({ url }: { url: string }) => {
+const downloadBufferFromURL = async ({ url }: { url: string }) => {
   const response = await fetch(url);
   const arrayBuffer = await response.arrayBuffer();
   const audioBuffer = await audioContextManager.decodeAudioData(arrayBuffer);
@@ -305,7 +314,6 @@ const loadAudioSourceUrl = async ({ url }: { url: string }) => {
 };
 
 const initializationMutex = new Mutex();
-const loadingSemaphore = new Semaphore(3); // Max 3 concurrent audio loads
 
 // Selector for canMutate
 export const useCanMutate = () => {
@@ -322,26 +330,106 @@ export const useCanMutate = () => {
 };
 
 export const useGlobalStore = create<GlobalState>((set, get) => {
+  // Helper function to manage LRU cache
+  const addURLToLRU = (url: string) => {
+    const state = get();
+    const queue = [...state.bufferAccessQueue];
+
+    // Remove URL if it exists (to move it to front)
+    const existingIndex = queue.indexOf(url);
+    if (existingIndex > -1) {
+      queue.splice(existingIndex, 1);
+    }
+
+    // Add URL to front
+    queue.unshift(url);
+
+    // Determine which URLs to evict (if any)
+    const urlsToEvict: string[] = [];
+    while (queue.length > MAX_CACHED_BUFFERS) {
+      const urlToEvict = queue.pop();
+      if (urlToEvict) {
+        // Don't evict the currently selected/playing track
+        if (urlToEvict !== state.selectedAudioUrl) {
+          urlsToEvict.push(urlToEvict);
+          console.log(`[LRU Cache] Evicting ${urlToEvict}`);
+        } else {
+          // If we tried to evict the playing track, keep it at the end
+          queue.push(urlToEvict);
+          break;
+        }
+      }
+    }
+
+    // Apply all changes in one atomic update
+    set((currentState) => ({
+      bufferAccessQueue: queue,
+      audioSources: currentState.audioSources.map((as) =>
+        urlsToEvict.includes(as.source.url)
+          ? { ...as, status: "idle", buffer: undefined }
+          : as
+      ),
+    }));
+  };
+
   // Load audio buffer for a source
-  const loadAudioBuffer = async (url: string) => {
+  const loadAudioSource = async (url: string) => {
     try {
-      const { audioBuffer } = await loadAudioSourceUrl({ url });
+      // Check if already loaded, if so just tell the server that you have it
+      const state = get();
+      const existing = state.audioSources.find((as) => as.source.url === url);
+      if (existing && existing.status === "loaded") {
+        // Update LRU queue when accessing an already loaded buffer
+        addURLToLRU(url);
+
+        const { socket } = getSocket(state);
+        sendWSRequest({
+          ws: socket,
+          request: {
+            type: ClientActionEnum.enum.AUDIO_SOURCE_LOADED,
+            source: { url },
+          },
+        });
+        return;
+      }
+
+      // Mark as loading
+      set((currentState) => ({
+        audioSources: currentState.audioSources.map((as) =>
+          as.source.url === url ? { ...as, status: "loading" } : as
+        ),
+      }));
+
+      const { audioBuffer } = await downloadBufferFromURL({ url });
 
       // Update the source with loaded buffer
       set((currentState) => ({
         audioSources: currentState.audioSources.map((as) =>
           as.source.url === url
-            ? { ...as, status: "loaded" as const, buffer: audioBuffer }
+            ? { ...as, status: "loaded", buffer: audioBuffer }
             : as
         ),
       }));
+
+      // Update LRU queue after successfully loading a new buffer
+      addURLToLRU(url);
+
+      // Send message to server that the source is loaded
+      const { socket } = getSocket(state);
+      sendWSRequest({
+        ws: socket,
+        request: {
+          type: ClientActionEnum.enum.AUDIO_SOURCE_LOADED,
+          source: { url },
+        },
+      });
     } catch (error) {
       console.error(`Failed to load audio source ${url}:`, error);
       // Update the source with error status
       set((currentState) => ({
         audioSources: currentState.audioSources.map((as) =>
           as.source.url === url
-            ? { ...as, status: "error" as const, error: String(error) }
+            ? { ...as, status: "error", error: String(error) }
             : as
         ),
       }));
@@ -1215,30 +1303,39 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
 
       const state = get();
 
-      // Create new audioSources array with proper states
+      // Clean up buffer access queue - remove URLs that are no longer in the playlist
+      const newUrls = new Set(sources.map((s) => s.url));
+      const updatedQueue = state.bufferAccessQueue.filter((url) =>
+        newUrls.has(url)
+      );
+
+      // Create new audioSources array (preserving loaded buffers for tracks still in playlist)
       const newAudioSources: AudioSourceState[] = sources.map((source) => {
-        // Check if this source already exists
-        const existing = state.audioSources.find(
-          (as) => as.source.url === source.url
-        );
-        if (existing) {
-          // Keep existing state (loaded, loading, or error)
-          return existing;
-        } else {
-          // New source, mark as loading
-          return {
-            source,
-            status: "loading" as const,
-          };
+        // Try to preserve the status of the currently playing/selected track
+        if (
+          source.url === state.selectedAudioUrl ||
+          source.url === currentAudioSource
+        ) {
+          const existing = state.audioSources.find(
+            (as) => as.source.url === source.url
+          );
+          if (existing) {
+            return existing;
+          }
         }
+        return {
+          source,
+          status: "idle",
+        };
       });
 
-      // Update state immediately to show all sources (with loading states)
-      set({ audioSources: newAudioSources });
+      // Update state immediately to show all sources (with idle states) and cleaned queue
+      set({ audioSources: newAudioSources, bufferAccessQueue: updatedQueue });
 
-      // If currentAudioSource is provided from server, update selectedAudioUrl
+      // If currentAudioSource is provided from server, update selectedAudioUrl and start loading it
       if (currentAudioSource) {
         set({ selectedAudioUrl: currentAudioSource });
+        loadAudioSource(currentAudioSource);
       }
 
       // Check if the currently selected/playing track was removed
@@ -1254,69 +1351,6 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
 
         // Clear selected track - don't auto-select another
         set({ selectedAudioUrl: "" });
-      }
-
-      // Find sources that need loading
-      const sourcesToLoad = newAudioSources.filter(
-        (as) => as.status === "loading"
-      );
-
-      if (sourcesToLoad.length === 0) {
-        return; // Nothing to load
-      }
-
-      // Separate current audio source from others
-      const currentSourceToLoad = currentAudioSource
-        ? sourcesToLoad.find((as) => as.source.url === currentAudioSource)
-        : null;
-
-      const otherSourcesToLoad = sourcesToLoad.filter(
-        (as) => as.source.url !== currentAudioSource
-      );
-
-      console.log(`Loading ${sourcesToLoad.length} audio sources`);
-
-      // Load current audio source first if it needs loading
-      if (currentSourceToLoad) {
-        console.log(
-          `Priority loading current audio source: ${currentAudioSource}`
-        );
-        try {
-          await loadAudioBuffer(currentSourceToLoad.source.url);
-          console.log(`Current audio source loaded: ${currentAudioSource}`);
-        } catch (error) {
-          console.error(
-            `Failed to load current audio source: ${currentAudioSource}`,
-            error
-          );
-        }
-      }
-
-      // Load all other sources with semaphore control (max 3 concurrent)
-      if (otherSourcesToLoad.length > 0) {
-        console.log(
-          `Loading ${otherSourcesToLoad.length} additional audio sources with max 3 concurrent`
-        );
-
-        const loadPromises = otherSourcesToLoad.map(async (as) => {
-          const [, release] = await loadingSemaphore.acquire();
-          try {
-            await loadAudioBuffer(as.source.url);
-            console.log(`Audio source ${as.source.url} loaded`);
-          } catch (error) {
-            console.error(
-              `Error loading audio source ${as.source.url}:`,
-              error
-            );
-          } finally {
-            release();
-          }
-        });
-
-        // Fire and forget - don't block on background loads
-        Promise.all(loadPromises).catch((error) => {
-          console.error("Error during background audio loading:", error);
-        });
       }
     },
 
@@ -1431,5 +1465,11 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
 
     // Stream job methods
     setActiveStreamJobs: (count) => set({ activeStreamJobs: count }),
+
+    // Audio source methods
+    handleLoadAudioSource: ({ audioSourceToPlay }: LoadAudioSourceType) => {
+      set({ selectedAudioUrl: audioSourceToPlay.url });
+      loadAudioSource(audioSourceToPlay.url);
+    },
   };
 });

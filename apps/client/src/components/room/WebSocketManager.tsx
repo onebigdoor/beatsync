@@ -88,6 +88,9 @@ export const WebSocketManager = ({
     (state) => state.setActiveStreamJobs
   );
   const setMessages = useChatStore((state) => state.setMessages);
+  const handleLoadAudioSource = useGlobalStore(
+    (state) => state.handleLoadAudioSource
+  );
 
   // Use the NTP heartbeat hook
   const { startHeartbeat, stopHeartbeat, markNTPResponseReceived } =
@@ -194,6 +197,8 @@ export const WebSocketManager = ({
         } else if (event.type === "CHAT_UPDATE") {
           // Handle chat messages
           setMessages(event.messages, event.isFullSync, event.newestId);
+        } else if (event.type === "LOAD_AUDIO_SOURCE") {
+          handleLoadAudioSource(event);
         }
       } else if (response.type === "SCHEDULED_ACTION") {
         // handle scheduling action
