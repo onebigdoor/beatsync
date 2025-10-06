@@ -4,11 +4,9 @@ import { cn } from "@/lib/utils";
 import { useCanMutate, useGlobalStore } from "@/store/global";
 import { Construction, Orbit, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
-import { usePostHog } from "posthog-js/react";
 import { Button } from "../ui/button";
 
 export const AudioControls = () => {
-  const posthog = usePostHog();
   const canMutate = useCanMutate();
   const startSpatialAudio = useGlobalStore((state) => state.startSpatialAudio);
   const stopSpatialAudio = useGlobalStore(
@@ -19,13 +17,11 @@ export const AudioControls = () => {
   const handleStartSpatialAudio = () => {
     if (!canMutate) return;
     startSpatialAudio();
-    posthog.capture("start_spatial_audio");
   };
 
   const handleStopSpatialAudio = () => {
     if (!canMutate) return;
     stopSpatialAudio();
-    posthog.capture("stop_spatial_audio");
   };
 
   return (

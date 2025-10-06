@@ -9,12 +9,10 @@ import {
   SkipBack,
   SkipForward,
 } from "lucide-react";
-import { usePostHog } from "posthog-js/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Slider } from "../ui/slider";
 
 export const Player = () => {
-  const posthog = usePostHog();
   const canMutate = useCanMutate();
   const broadcastPlay = useGlobalStore((state) => state.broadcastPlay);
   const broadcastPause = useGlobalStore((state) => state.broadcastPause);
@@ -22,7 +20,6 @@ export const Player = () => {
   const getCurrentTrackPosition = useGlobalStore(
     (state) => state.getCurrentTrackPosition
   );
-  const selectedAudioId = useGlobalStore((state) => state.selectedAudioUrl);
   const audioSources = useGlobalStore((state) => state.audioSources);
   const currentTime = useGlobalStore((state) => state.currentTime);
   const skipToNextTrack = useGlobalStore((state) => state.skipToNextTrack);
@@ -136,19 +133,13 @@ export const Player = () => {
     if (!canMutate) return;
     if (!isShuffled) {
       skipToPreviousTrack();
-      posthog.capture("skip_previous", {
-        from_track_id: selectedAudioId,
-      });
     }
-  }, [canMutate, skipToPreviousTrack, isShuffled, posthog, selectedAudioId]);
+  }, [canMutate, skipToPreviousTrack, isShuffled]);
 
   const handleSkipForward = useCallback(() => {
     if (!canMutate) return;
     skipToNextTrack();
-    posthog.capture("skip_next", {
-      from_track_id: selectedAudioId,
-    });
-  }, [canMutate, skipToNextTrack, posthog, selectedAudioId]);
+  }, [canMutate, skipToNextTrack]);
 
   const handleShuffle = () => {
     if (!canMutate) return;

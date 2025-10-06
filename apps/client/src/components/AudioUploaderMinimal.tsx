@@ -5,7 +5,6 @@ import { cn, trimFileName } from "@/lib/utils";
 import { useCanMutate } from "@/store/global";
 import { useRoomStore } from "@/store/room";
 import { CloudUpload, Plus } from "lucide-react";
-import { usePostHog } from "posthog-js/react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -15,7 +14,6 @@ export const AudioUploaderMinimal = () => {
   const [fileName, setFileName] = useState<string | null>(null);
   const canMutate = useCanMutate();
   const roomId = useRoomStore((state) => state.roomId);
-  const posthog = usePostHog();
 
   const isDisabled = !canMutate;
 
@@ -24,14 +22,6 @@ export const AudioUploaderMinimal = () => {
 
     // Store file name for display
     setFileName(file.name);
-
-    // Track upload initiated
-    posthog.capture("upload_initiated", {
-      file_name: file.name,
-      file_size: file.size,
-      file_type: file.type,
-      room_id: roomId,
-    });
 
     try {
       setIsUploading(true);
@@ -42,28 +32,11 @@ export const AudioUploaderMinimal = () => {
         roomId,
       });
 
-      // Track successful upload
-      posthog.capture("upload_success", {
-        file_name: file.name,
-        file_size: file.size,
-        file_type: file.type,
-        room_id: roomId,
-      });
-
       setTimeout(() => setFileName(null), 3000);
     } catch (err) {
       console.error("Error during upload:", err);
       toast.error("Failed to upload audio file");
       setFileName(null);
-
-      // Track upload failure
-      posthog.capture("upload_failed", {
-        file_name: file.name,
-        file_size: file.size,
-        file_type: file.type,
-        room_id: roomId,
-        error: err instanceof Error ? err.message : "Unknown error",
-      });
     } finally {
       setIsUploading(false);
     }

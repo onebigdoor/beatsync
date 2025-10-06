@@ -14,7 +14,6 @@ import { useQuery } from "@tanstack/react-query";
 import { PlusCircle } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { usePostHog } from "posthog-js/react";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { FaDiscord, FaGithub } from "react-icons/fa";
@@ -27,7 +26,6 @@ interface JoinFormData {
 }
 
 export const Join = () => {
-  const posthog = usePostHog();
   const [isJoining, setIsJoining] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const setUsername = useRoomStore((state) => state.setUsername);
@@ -48,7 +46,7 @@ export const Join = () => {
     // Set a random username when component mounts
     const generatedName = generateName();
     setUsername(generatedName);
-  }, [setValue, setUsername, posthog]);
+  }, [setValue, setUsername]);
 
   const { data: numActiveUsers } = useQuery({
     queryKey: ["active-rooms"],
@@ -64,20 +62,8 @@ export const Join = () => {
     if (!validateFullRoomId(data.roomId)) {
       toast.error("Invalid room code. Please enter 6 digits.");
       setIsJoining(false);
-
-      // Track validation error
-      posthog.capture("join_room_validation_error", {
-        room_id: data.roomId,
-        error: "Invalid room code",
-      });
       return;
     }
-
-    // Track join attempt
-    posthog.capture("join_room_attempt", {
-      room_id: data.roomId,
-      username,
-    });
 
     console.log("Joining room with data:", {
       roomId: data.roomId,
@@ -92,24 +78,12 @@ export const Join = () => {
     // Generate a random 6-digit room ID
     const newRoomId = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Track room creation
-    posthog.capture("create_room", {
-      room_id: newRoomId,
-      username,
-    });
-
     router.push(`/room/${newRoomId}`);
   };
 
   const handleRegenerateName = () => {
     const newName = generateName();
     setUsername(newName);
-
-    // Track name regeneration
-    posthog.capture("regenerate_username", {
-      previous_username: username,
-      new_username: newName,
-    });
   };
 
   return (

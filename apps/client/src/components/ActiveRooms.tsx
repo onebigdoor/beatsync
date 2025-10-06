@@ -8,11 +8,9 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Users2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
-import { usePostHog } from "posthog-js/react";
 
 export const ActiveRooms = () => {
   const router = useRouter();
-  const posthog = usePostHog();
   const username = useRoomStore((state) => state.username);
   const setUsername = useRoomStore((state) => state.setUsername);
 
@@ -29,10 +27,6 @@ export const ActiveRooms = () => {
       setUsername(generatedName);
     }
 
-    posthog.capture("join_room_from_discover", {
-      room_id: roomId,
-      username: username || "generated",
-    });
     router.push(`/room/${roomId}`);
   };
 

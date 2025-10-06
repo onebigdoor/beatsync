@@ -25,7 +25,6 @@ import {
   SpatialConfigType,
 } from "@beatsync/shared";
 import { Mutex } from "async-mutex";
-import posthog from "posthog-js";
 import { toast } from "sonner";
 import { create } from "zustand";
 
@@ -819,11 +818,6 @@ export const useGlobalStore = create<GlobalState>((set, get) => {
     sendChatMessage: (text: string) => {
       const state = get();
       const { socket } = getSocket(state);
-
-      // Track message sent event
-      posthog.capture("send_chat_message", {
-        message_text: text,
-      });
 
       sendWSRequest({
         ws: socket,
