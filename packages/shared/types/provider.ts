@@ -35,8 +35,6 @@ export const AlbumSchema = z.object({
   parental_warning: z.boolean(),
   genre: z
     .object({
-      path: z.array(z.number()),
-      color: z.string(),
       name: z.string(),
       id: z.number(),
     })
