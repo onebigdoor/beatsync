@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd apps/client && bun run build",
-  "outputDirectory": "apps/client/.next",
-  "framework": "nextjs"
-}
