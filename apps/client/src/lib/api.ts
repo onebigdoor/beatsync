@@ -114,9 +114,7 @@ export async function fetchActiveRooms() {
 }
 
 export async function fetchDiscoverRooms() {
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/discover`
-  );
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/discover`);
   const data: DiscoverRoomsType = await response.json();
   return data;
 }
