@@ -78,18 +78,18 @@ const server = Bun.serve<WSData, undefined>({
 console.log(`HTTP listening on http://${server.hostname}:${server.port}`);
 
 // Restore state from backup on startup
-// BackupManager.restoreState().catch((error) => {
-//   console.error("Failed to restore state on startup:", error);
-// });
+BackupManager.restoreState().catch((error) => {
+  console.error("Failed to restore state on startup:", error);
+});
 
 // Set up periodic backups every minute (for Render persistence issues)
-// const BACKUP_INTERVAL_MS = 60 * 1000; // 1 minute
-// setInterval(() => {
-//   console.log("🔄 Performing periodic backup at", new Date().toISOString());
-//   BackupManager.backupState().catch((error) => {
-//     console.error("Failed to perform periodic backup:", error);
-//   });
-// }, BACKUP_INTERVAL_MS);
+const BACKUP_INTERVAL_MS = 60 * 1000; // 1 minute
+setInterval(() => {
+  console.log("🔄 Performing periodic backup at", new Date().toISOString());
+  BackupManager.backupState().catch((error) => {
+    console.error("Failed to perform periodic backup:", error);
+  });
+}, BACKUP_INTERVAL_MS);
 
 // Simple graceful shutdown
 const shutdown = async () => {
