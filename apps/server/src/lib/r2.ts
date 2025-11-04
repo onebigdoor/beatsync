@@ -8,6 +8,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { FetchHttpHandler } from "@smithy/fetch-http-handler";
 import { R2_AUDIO_FILE_NAME_DELIMITER } from "@beatsync/shared";
 import { config } from "dotenv";
 import sanitize from "sanitize-filename";
@@ -17,18 +18,101 @@ config();
 const S3_CONFIG = {
   BUCKET_NAME: process.env.S3_BUCKET_NAME!,
   PUBLIC_URL: process.env.S3_PUBLIC_URL!,
-  ENDPOINT: process.env.S3_ENDPOINT!,
+  ENDPOINT: process.env.S3_ENDPOINT || "", // Empty means use AWS S3 default
   ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID!,
   SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY!,
+  REGION: process.env.AWS_REGION || process.env.S3_REGION || "us-east-1",
 };
 
+// Determine if we're using R2 or AWS S3
+const isR2 = !!S3_CONFIG.ENDPOINT;
+const normalizedEndpoint = isR2
+  ? S3_CONFIG.ENDPOINT.replace(/\/$/, "")
+  : undefined;
+
+// Log configuration (masking sensitive data)
+console.log(`🔧 ${isR2 ? "R2" : "AWS S3"} Configuration:`);
+if (isR2) {
+  console.log(`   Endpoint: ${normalizedEndpoint}`);
+} else {
+  console.log(`   Region: ${S3_CONFIG.REGION}`);
+}
+console.log(`   Bucket: ${S3_CONFIG.BUCKET_NAME}`);
+console.log(
+  `   Access Key ID: ${
+    S3_CONFIG.ACCESS_KEY_ID
+      ? `${S3_CONFIG.ACCESS_KEY_ID.substring(0, 8)}...`
+      : "NOT SET"
+  }`
+);
+
 const r2Client = new S3Client({
-  region: "auto",
-  endpoint: S3_CONFIG.ENDPOINT,
+  region: isR2 ? "auto" : S3_CONFIG.REGION,
+  ...(normalizedEndpoint && { endpoint: normalizedEndpoint }),
+  ...(isR2 && { forcePathStyle: true }), // Required for Cloudflare R2
   credentials: {
     accessKeyId: S3_CONFIG.ACCESS_KEY_ID,
     secretAccessKey: S3_CONFIG.SECRET_ACCESS_KEY,
   },
+  // Disable checksum validation for R2 (R2 doesn't support CRC32 checksums)
+  // For AWS S3, we can leave it enabled or disable it - either works
+  ...(isR2 && { requestChecksumMode: "DISABLED" }),
+  // Use fetch-based handler for Bun compatibility (Bun doesn't support Node's HTTP client)
+  requestHandler: new FetchHttpHandler({
+    requestTimeout: 30000,
+  }),
+});
+
+// Test connectivity on startup using a simple S3 operation
+async function testR2Connectivity() {
+  try {
+    console.log(
+      `🧪 Testing ${
+        isR2 ? "R2" : "AWS S3"
+      } connectivity with a simple operation...`
+    );
+
+    // Use HeadBucketCommand as a simple connectivity test (requires auth but is lightweight)
+    const { HeadBucketCommand } = await import("@aws-sdk/client-s3");
+    const testCommand = new HeadBucketCommand({
+      Bucket: S3_CONFIG.BUCKET_NAME,
+    });
+
+    await r2Client.send(testCommand);
+    console.log(
+      `✅ ${
+        isR2 ? "R2" : "AWS S3"
+      } connectivity test successful - bucket exists`
+    );
+    return true;
+  } catch (error: any) {
+    if (
+      error?.name === "NotFound" ||
+      error?.$metadata?.httpStatusCode === 404
+    ) {
+      console.log(
+        `⚠️  ${
+          isR2 ? "R2" : "AWS S3"
+        } endpoint is reachable but bucket might not exist (404)`
+      );
+      return true; // Connection works, bucket might just not exist
+    }
+    console.error(`❌ ${isR2 ? "R2" : "AWS S3"} connectivity test failed:`);
+    console.error(`   Error code: ${error?.code}`);
+    console.error(`   Error name: ${error?.name}`);
+    console.error(`   Error message: ${error?.message || error}`);
+    if (normalizedEndpoint) {
+      console.error(`   Endpoint: ${normalizedEndpoint}`);
+    } else {
+      console.error(`   Region: ${S3_CONFIG.REGION}`);
+    }
+    return false;
+  }
+}
+
+// Test connectivity on module load (non-blocking)
+testR2Connectivity().catch((err) => {
+  console.error("R2 connectivity test error:", err);
 });
 
 export interface AudioFileMetadata {
@@ -174,13 +258,32 @@ export function generateAudioFileName(originalName: string): string {
 }
 
 /**
- * Validate R2 configuration
+ * Validate R2/S3 configuration
  */
 export function validateR2Config(): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  for (const [key, value] of Object.entries(S3_CONFIG)) {
-    if (!value) {
+  // ENDPOINT is only required for R2, not for AWS S3
+  const isR2 = !!S3_CONFIG.ENDPOINT;
+  const requiredFields = [
+    "BUCKET_NAME",
+    "PUBLIC_URL",
+    "ACCESS_KEY_ID",
+    "SECRET_ACCESS_KEY",
+  ];
+
+  if (isR2) {
+    // For R2, ENDPOINT is required
+    requiredFields.push("ENDPOINT");
+  } else {
+    // For AWS S3, REGION is required instead
+    if (!S3_CONFIG.REGION) {
+      errors.push(`S3 CONFIG: REGION is not defined (required for AWS S3)`);
+    }
+  }
+
+  for (const key of requiredFields) {
+    if (!S3_CONFIG[key as keyof typeof S3_CONFIG]) {
       errors.push(`S3 CONFIG: ${key} is not defined`);
     }
   }
@@ -545,11 +648,11 @@ export async function cleanupOrphanedRooms(
   };
 
   try {
-    // Validate R2 configuration
+    // Validate S3/R2 configuration
     const r2Config = validateR2Config();
     if (!r2Config.isValid) {
       throw new Error(
-        `R2 configuration is invalid: ${r2Config.errors.join(", ")}`
+        `S3/R2 configuration is invalid: ${r2Config.errors.join(", ")}`
       );
     }
 

@@ -13,6 +13,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.828.0",
     "@beatsync/shared": "workspace:*",
+    "@smithy/fetch-http-handler": "^5.3.5",
     "dotenv": "^16.5.0",
     "hono": "^4.7.2",
     "nanoid": "^5.1.5",
