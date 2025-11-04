@@ -8,7 +8,6 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { FetchHttpHandler } from "@smithy/fetch-http-handler";
 import { R2_AUDIO_FILE_NAME_DELIMITER } from "@beatsync/shared";
 import { config } from "dotenv";
 import sanitize from "sanitize-filename";
@@ -57,10 +56,9 @@ const r2Client = new S3Client({
   // Disable checksum validation for R2 (R2 doesn't support CRC32 checksums)
   // For AWS S3, we can leave it enabled or disable it - either works
   ...(isR2 && { requestChecksumMode: "DISABLED" }),
-  // Use fetch-based handler for Bun compatibility (Bun doesn't support Node's HTTP client)
-  requestHandler: new FetchHttpHandler({
-    requestTimeout: 30000,
-  }),
+  // Use default Node HTTP handler for AWS S3 (works fine with Node)
+  // For R2, if default handler doesn't work, we can switch back to FetchHttpHandler
+  // requestHandler: new FetchHttpHandler({ requestTimeout: 30000 }),
 });
 
 // Test connectivity on startup using a simple S3 operation
