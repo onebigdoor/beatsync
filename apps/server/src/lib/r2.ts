@@ -252,7 +252,8 @@ export function generateAudioFileName(originalName: string): string {
   const now = new Date();
   const dateStr = now.toISOString().replace(":", "-");
 
-  return `${safeName}${R2_AUDIO_FILE_NAME_DELIMITER}${dateStr}.${extension}`;
+  return `${safeName}.${extension}`;
+  //return `${safeName}${R2_AUDIO_FILE_NAME_DELIMITER}${dateStr}.${extension}`;
 }
 
 /**

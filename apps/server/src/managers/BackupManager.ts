@@ -81,8 +81,23 @@ export class BackupManager {
         );
       }
 
-      // Always schedule cleanup on restoration because we don't know if any clients will reconnect.
-      globalManager.scheduleRoomCleanup(roomId);
+      // Restore persistent flag if it exists (for backward compatibility with old backups)
+      if (roomData.persistent !== undefined) {
+        room.setPersistent(roomData.persistent);
+        console.log(
+          `Room ${roomId}: Restored persistent flag: ${roomData.persistent}`
+        );
+      }
+
+      // Only schedule cleanup on restoration if room is not persistent
+      // (because we don't know if any clients will reconnect)
+      if (!room.isPersistent()) {
+        globalManager.scheduleRoomCleanup(roomId);
+      } else {
+        console.log(
+          `Room ${roomId}: Is persistent, skipping cleanup scheduling`
+        );
+      }
       return {
         room: {
           id: roomId,

@@ -51,6 +51,7 @@ export async function handleStats(): Promise<Response> {
       totalSizeBytes: storageInfo?.totalSizeBytes || 0,
       files: storageInfo?.files || [],
       clients, // Add detailed client information
+      persistent: room.isPersistent(), // Show if room is persistent
     };
   });
 

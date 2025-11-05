@@ -61,6 +61,7 @@ const RoomBackupSchema = z.object({
       nextMessageId: z.number(),
     })
     .optional(),
+  persistent: z.boolean().optional().default(true), // Room persistence flag
 });
 export type RoomBackupType = z.infer<typeof RoomBackupSchema>;
 
@@ -113,6 +114,7 @@ export class RoomManager {
   // Map of trackId to job status
   private activeStreamJobs = new Map<string, { status: string }>();
   private chatManager: ChatManager;
+  private persistent: boolean = true; // If true, room won't be cleaned up when empty (default: true)
 
   // Audio loading state for synchronized playback
   private pendingPlay?: PendingPlayState;
@@ -934,13 +936,45 @@ export class RoomManager {
         messages: this.chatManager.getFullHistory(),
         nextMessageId: this.chatManager.getNextMessageId(),
       },
+      persistent: this.persistent,
     };
+  }
+
+  /**
+   * Check if this room is marked as persistent (won't be cleaned up when empty)
+   */
+  isPersistent(): boolean {
+    return this.persistent;
+  }
+
+  /**
+   * Set whether this room should persist when empty
+   */
+  setPersistent(persistent: boolean): void {
+    this.persistent = persistent;
+    if (persistent) {
+      // Cancel any pending cleanup if marking as persistent
+      this.cancelCleanup();
+      console.log(
+        `🔒 Room ${this.roomId} marked as persistent - will not be cleaned up when empty`
+      );
+    } else {
+      console.log(
+        `🔓 Room ${this.roomId} marked as non-persistent - can be cleaned up when empty`
+      );
+    }
   }
 
   /**
    * Schedule cleanup after a delay
    */
   scheduleCleanup(callback: () => Promise<void>, delayMs: number): void {
+    // Don't schedule cleanup for persistent rooms
+    if (this.persistent) {
+      console.log(`🚫 Skipping cleanup for persistent room ${this.roomId}`);
+      return;
+    }
+
     // Cancel any existing timer
     this.cancelCleanup();
 

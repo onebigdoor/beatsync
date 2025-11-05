@@ -2,6 +2,7 @@ import { BackupManager } from "./managers/BackupManager";
 import { getActiveRooms } from "./routes/active";
 import { handleGetDefaultAudio } from "./routes/default";
 import { handleDiscover } from "./routes/discover";
+import { handleSetPersistent } from "./routes/persistent";
 import { handleRoot } from "./routes/root";
 import { handleStats } from "./routes/stats";
 import { handleGetPresignedURL, handleUploadComplete } from "./routes/upload";
@@ -51,6 +52,9 @@ const server = Bun.serve<WSData, undefined>({
 
         case "/discover":
           return handleDiscover(req);
+
+        case "/room/persistent":
+          return handleSetPersistent(req);
 
         default:
           return errorResponse("Not found", 404);

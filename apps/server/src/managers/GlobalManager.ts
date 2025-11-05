@@ -165,6 +165,12 @@ export class GlobalManager {
       return;
     }
 
+    // Don't schedule cleanup for persistent rooms
+    if (room.isPersistent()) {
+      console.log(`🚫 Skipping cleanup for persistent room ${roomId}`);
+      return;
+    }
+
     // Only schedule cleanup if room has no active connections
     if (!room.hasActiveConnections()) {
       room.scheduleCleanup(async () => {
